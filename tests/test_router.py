@@ -48,8 +48,8 @@ def test_llm_fallback_invoked_when_no_rule(vault: Path) -> None:
 
     fake = LLMResult(
         text='{"context":"sanlam","confidence":0.92,"reasoning":"capstone path"}',
-        model="haiku", cost_usd=0.0, duration_ms=1, session_id="s",
-        raw={},
+        structured=None, model="haiku", cost_usd=0.0,
+        duration_ms=1, session_id="s", raw={},
     )
     event = {"id": "e3", "source": "manual"}
     with patch("ghostbrain.worker.router.llm.run", return_value=fake) as mock_llm:
@@ -70,7 +70,8 @@ def test_llm_low_confidence_returns_needs_review(vault: Path) -> None:
 
     fake = LLMResult(
         text='{"context":"codeship","confidence":0.40,"reasoning":"vague"}',
-        model="haiku", cost_usd=0.0, duration_ms=1, session_id="s", raw={},
+        structured=None, model="haiku", cost_usd=0.0,
+        duration_ms=1, session_id="s", raw={},
     )
     event = {"id": "e4", "source": "manual"}
     with patch("ghostbrain.worker.router.llm.run", return_value=fake):

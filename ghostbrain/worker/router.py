@@ -83,11 +83,16 @@ def route_event(
             )
 
     excerpt = content_excerpt or _build_excerpt_from_event(event)
-    if not excerpt.strip():
+    has_real_content = bool(
+        content_excerpt and content_excerpt.strip()
+        or event.get("title")
+        or event.get("body")
+    )
+    if not excerpt.strip() or not has_real_content:
         return RoutingDecision(
             context="needs_review",
             confidence=0.0,
-            reasoning="no content available to classify",
+            reasoning="no classifiable content",
             method="fallback",
         )
 

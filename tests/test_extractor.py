@@ -12,8 +12,8 @@ from ghostbrain.llm.client import LLMResult
 
 def _llm_result(text: str) -> LLMResult:
     return LLMResult(
-        text=text, model="sonnet", cost_usd=0.0, duration_ms=1,
-        session_id="s", raw={},
+        text=text, structured=None, model="sonnet", cost_usd=0.0,
+        duration_ms=1, session_id="s", raw={},
     )
 
 

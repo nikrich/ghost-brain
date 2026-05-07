@@ -64,36 +64,24 @@ CONTEXT_SUBDIRS: tuple[str, ...] = (
 # behavior — these are seeds, not the live source of truth at runtime.
 _ROUTER_PROMPT = """\
 <!-- Router prompt. Used by ghostbrain.worker.router for events that don't
-match a fast path-based rule. Output JSON validated against the schema in
-ghostbrain.worker.router.ROUTER_JSON_SCHEMA. -->
+match a fast path-based rule. -->
+
+RESPOND WITH JSON ONLY. NO PROSE. NO MARKDOWN FENCES. NO PREAMBLE.
 
 You are a routing classifier for a personal knowledge system.
 
-Available contexts:
+Available contexts: sanlam, codeship, reducedrecipes, personal — see
+`routing.yaml` and `20-contexts/<ctx>/_profile.md` for what each covers.
 
-- **sanlam**, **codeship**, **reducedrecipes**, **personal** — see
-  `routing.yaml` for routing rules and `20-contexts/<ctx>/_profile.md`
-  for what each context covers.
+Decide which context the content below belongs to. Be conservative — if
+signals point in multiple directions, return `needs_review`.
 
-Read the content below and decide which context it belongs to. Be
-conservative — if signals point in multiple directions or the content is
-generic developer chatter, return `needs_review`.
+Your entire response must be a single JSON object exactly matching:
 
-Output **ONLY** a single JSON object matching this shape:
+`{"context": "...", "confidence": 0.0, "reasoning": "...", "secondary_contexts": []}`
 
-```json
-{
-  "context": "sanlam | codeship | reducedrecipes | personal | needs_review",
-  "confidence": 0.0,
-  "reasoning": "one sentence explaining the strongest signal",
-  "secondary_contexts": []
-}
-```
-
-Confidence guidance:
-- `>= 0.9` — explicit project name, repo URL, file path.
-- `0.7 - 0.9` — strong topical match but no naming proof.
-- `< 0.7` — weak / multi-context. Return `needs_review`.
+`context` ∈ `{sanlam, codeship, reducedrecipes, personal, needs_review}`.
+`confidence` ∈ [0, 1]. Return `needs_review` when confidence < 0.7.
 
 Content to classify:
 {{content}}
@@ -101,36 +89,30 @@ Content to classify:
 
 _EXTRACTOR_PROMPT = """\
 <!-- Extractor prompt. Used by ghostbrain.worker.extractor on every Claude
-session note. Output is a JSON array; each item becomes its own artifact
-file under 20-contexts/<ctx>/claude/artifacts/<type>/. -->
+session note. -->
 
-Read this Claude conversation excerpt and extract any of the following that
-are clearly present and durable. **Be conservative.** It is correct to
-return an empty array `[]` for short, exploratory, or chatty sessions.
+RESPOND WITH JSON ONLY. NO PROSE. NO MARKDOWN FENCES. NO PREAMBLE.
+Your entire response must be a single JSON array (possibly empty: `[]`).
 
-Extract:
+Extract any of the following that are clearly present and durable.
+**Be conservative** — it is correct to return `[]` for short, exploratory,
+or chatty sessions.
 
-1. **spec** — formal specifications, requirements, design docs.
-2. **decision** — explicit decisions with stated reasoning.
-3. **code** — non-trivial code blocks (>20 lines) worth saving.
-4. **prompt** — prompts/templates that worked and could be reused.
-5. **unresolved** — open questions, blockers, "to figure out later".
+Categories:
+1. `spec` — formal specifications, requirements, design docs.
+2. `decision` — explicit decisions with stated reasoning.
+3. `code` — non-trivial code blocks (>20 lines) worth saving.
+4. `prompt` — prompts/templates that worked and could be reused.
+5. `unresolved` — open questions, blockers, "to figure out later".
 
 Do NOT extract: generic facts, questions answered inline, tool-call output,
 or text that was rewritten/discarded later in the session.
 
-Output **ONLY** a single JSON array (empty if nothing meaningful):
+Each array element has shape:
+`{"type": "...", "title": "...", "content": "...", "tags": []}`
 
-```json
-[
-  {
-    "type": "spec | decision | code | prompt | unresolved",
-    "title": "concise title (max 12 words)",
-    "content": "the full content, markdown-formatted",
-    "tags": []
-  }
-]
-```
+`type` is one of the five above. `title` ≤ 12 words.
+`content` is the full markdown content. `tags` is an array of strings.
 
 Conversation excerpt:
 {{content}}

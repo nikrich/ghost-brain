@@ -15,6 +15,7 @@ import dataclasses
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -28,10 +29,16 @@ DEFAULT_MODEL = "haiku"
 RETRY_DELAYS_S = (5, 30, 120)
 
 MINIMAL_SYSTEM_PROMPT = (
-    "You are an automation assistant for a personal knowledge system. "
-    "Follow the user's instructions exactly. When asked for JSON, output "
-    "ONLY a single JSON value with no surrounding prose, code fences, or "
-    "commentary."
+    "You are an automation backend, not a chat assistant. The user's prompts "
+    "are machine-generated and your output is parsed programmatically. "
+    "RULES:\n"
+    "1. Never include conversational preamble ('Sure', 'Done', 'Here is...').\n"
+    "2. Never wrap output in markdown code fences (no ```json blocks).\n"
+    "3. Never explain your reasoning unless the prompt asks for a "
+    "'reasoning' field in JSON.\n"
+    "4. When the prompt asks for JSON, your ENTIRE response must be a "
+    "single valid JSON value — nothing before, nothing after.\n"
+    "5. Match the requested schema exactly. Do not add extra fields."
 )
 
 
@@ -50,6 +57,7 @@ class LLMRateLimit(LLMError):
 @dataclasses.dataclass
 class LLMResult:
     text: str
+    structured: Any  # already-parsed object when --json-schema was used; else None
     model: str
     cost_usd: float
     duration_ms: int
@@ -57,13 +65,15 @@ class LLMResult:
     raw: dict[str, Any]
 
     def as_json(self) -> Any:
-        """Parse ``text`` as JSON. Raises ``LLMError`` on parse failure."""
-        try:
-            return json.loads(self.text)
-        except json.JSONDecodeError as e:
-            raise LLMError(
-                f"expected JSON output but got: {self.text[:200]!r}"
-            ) from e
+        """Return the response as a parsed JSON value.
+
+        When ``--json-schema`` was passed, ``structured`` already holds the
+        parsed object — we return it directly. Otherwise we tolerantly parse
+        ``text`` (strip markdown fences, extract first JSON value).
+        """
+        if self.structured is not None:
+            return self.structured
+        return _parse_json_tolerant(self.text)
 
 
 def run(
@@ -161,7 +171,8 @@ def _run_once(cmd: list[str], *, timeout_s: int) -> LLMResult:
         )
 
     return LLMResult(
-        text=str(payload.get("result", "")),
+        text=str(payload.get("result") or ""),
+        structured=payload.get("structured_output"),
         model=_pick_model(payload),
         cost_usd=float(payload.get("total_cost_usd", 0.0)),
         duration_ms=int(payload.get("duration_ms", 0)),
@@ -175,6 +186,45 @@ def _pick_model(payload: dict) -> str:
     if usage:
         return next(iter(usage.keys()))
     return ""
+
+
+_FENCE_RE = re.compile(r"^\s*```(?:json|js)?\s*\n?(.*?)\n?\s*```\s*$",
+                       re.DOTALL | re.IGNORECASE)
+
+
+def _parse_json_tolerant(text: str) -> Any:
+    """Pull a JSON value out of a possibly-prose response."""
+    if not text:
+        raise LLMError("LLM returned empty response")
+
+    candidate = text.strip()
+
+    # Strip a wrapping ```json ... ``` block if present.
+    fence_match = _FENCE_RE.match(candidate)
+    if fence_match:
+        candidate = fence_match.group(1).strip()
+
+    # Fast path: the whole thing is JSON.
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError:
+        pass
+
+    # Slow path: find the first '{' or '[' and try progressively longer
+    # prefixes. JSONDecoder.raw_decode returns the longest valid JSON value
+    # starting at the given offset.
+    decoder = json.JSONDecoder()
+    for i, ch in enumerate(candidate):
+        if ch in "{[":
+            try:
+                value, _ = decoder.raw_decode(candidate[i:])
+                return value
+            except json.JSONDecodeError:
+                continue
+
+    raise LLMError(
+        f"could not extract JSON from LLM output: {text[:300]!r}"
+    )
 
 
 def _redact(cmd: list[str]) -> list[str]:
