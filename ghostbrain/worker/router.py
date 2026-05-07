@@ -69,18 +69,9 @@ def route_event(
     routing = routing or _load_yaml("routing.yaml")
     config = config or _load_yaml("config.yaml")
 
-    project_path = (event.get("metadata") or {}).get("projectPath")
-    if project_path:
-        ctx = detect_context(Path(project_path), routing=routing)
-        if ctx:
-            log.info("path-routed event=%s ctx=%s path=%s",
-                     event.get("id"), ctx, project_path)
-            return RoutingDecision(
-                context=ctx,
-                confidence=1.0,
-                reasoning=f"matched routing.yaml rule for {project_path}",
-                method="path",
-            )
+    fast = _fast_route(event, routing)
+    if fast is not None:
+        return fast
 
     excerpt = content_excerpt or _build_excerpt_from_event(event)
     has_real_content = bool(
@@ -97,6 +88,49 @@ def route_event(
         )
 
     return _route_via_llm(event, excerpt, config)
+
+
+def _fast_route(event: dict, routing: dict) -> RoutingDecision | None:
+    """Source-specific path-first lookup. Returns None when no rule matches."""
+    source = event.get("source") or ""
+    metadata = event.get("metadata") or {}
+
+    # Any event carrying a projectPath benefits from claude_code.project_paths
+    # — Claude sessions, Obsidian-driven manual events, future IDE hooks etc.
+    project_path = metadata.get("projectPath")
+    if project_path:
+        ctx = detect_context(Path(project_path), routing=routing)
+        if ctx:
+            log.info("path-routed event=%s ctx=%s path=%s",
+                     event.get("id"), ctx, project_path)
+            return RoutingDecision(
+                context=ctx,
+                confidence=1.0,
+                reasoning=f"matched routing.yaml rule for {project_path}",
+                method="path",
+            )
+
+    if source == "github":
+        org = metadata.get("org") or _org_from_repo(metadata.get("repo"))
+        if org:
+            ctx = (routing.get("github") or {}).get("orgs", {}).get(org)
+            if ctx:
+                log.info("path-routed event=%s ctx=%s github org=%s",
+                         event.get("id"), ctx, org)
+                return RoutingDecision(
+                    context=ctx,
+                    confidence=1.0,
+                    reasoning=f"matched github org rule for {org}",
+                    method="path",
+                )
+
+    return None
+
+
+def _org_from_repo(repo: str | None) -> str | None:
+    if not repo or "/" not in repo:
+        return None
+    return repo.split("/", 1)[0]
 
 
 def _route_via_llm(event: dict, excerpt: str, config: dict) -> RoutingDecision:

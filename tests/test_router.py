@@ -87,6 +87,62 @@ def test_llm_low_confidence_returns_needs_review(vault: Path) -> None:
     assert decision.context == "codeship"
 
 
+def test_path_match_for_github_org(vault: Path) -> None:
+    """github events route via routing.yaml github.orgs lookup, no LLM."""
+    from ghostbrain.worker.router import route_event
+
+    routing = {
+        "github": {
+            "orgs": {
+                "CodeshipAI": "codeship",
+                "ReducedRecipes": "reducedrecipes",
+            },
+        },
+    }
+    event = {
+        "id": "github:pr:CodeshipAI/x#42",
+        "source": "github",
+        "type": "pr",
+        "metadata": {"repo": "CodeshipAI/x", "org": "CodeshipAI"},
+        "title": "feat: ship",
+    }
+
+    with patch("ghostbrain.worker.router.llm.run") as mock_llm:
+        decision = route_event(event, routing=routing)
+
+    assert decision.context == "codeship"
+    assert decision.method == "path"
+    assert decision.confidence == 1.0
+    mock_llm.assert_not_called()
+
+
+def test_path_match_falls_back_when_org_missing(vault: Path) -> None:
+    """An event from an unmonitored github org falls through to LLM."""
+    from ghostbrain.worker.router import route_event
+    from ghostbrain.llm.client import LLMResult
+
+    routing = {"github": {"orgs": {"CodeshipAI": "codeship"}}}
+    event = {
+        "id": "github:pr:strangers/x#1",
+        "source": "github",
+        "type": "pr",
+        "metadata": {"repo": "strangers/x", "org": "strangers"},
+        "title": "feat: external PR",
+    }
+
+    fake = LLMResult(
+        text='{"context":"needs_review","confidence":0.4,"reasoning":"unknown org"}',
+        structured=None, model="haiku", cost_usd=0.0,
+        duration_ms=1, session_id="s", raw={},
+    )
+    with patch("ghostbrain.worker.router.llm.run", return_value=fake):
+        decision = route_event(
+            event, routing=routing,
+            config={"thresholds": {"reject_below": 0.5}},
+        )
+    assert decision.method == "llm"
+
+
 def test_llm_error_falls_back_to_review(vault: Path) -> None:
     from ghostbrain.worker.router import route_event
     from ghostbrain.llm import client as llm

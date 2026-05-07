@@ -32,6 +32,7 @@ ghostbrain-bootstrap = "ghostbrain.bootstrap:main"
 ghostbrain-worker = "ghostbrain.worker.main:main"
 ghostbrain-claude-md = "ghostbrain.profile.claude_md:main"
 ghostbrain-digest = "ghostbrain.worker.digest:main"
+ghostbrain-github-fetch = "ghostbrain.connectors.github.__main__:main"
 
 [tool.setuptools.packages.find]
 include = ["ghostbrain*"]

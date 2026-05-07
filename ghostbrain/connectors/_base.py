@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
@@ -45,7 +46,9 @@ class Connector(ABC):
     def _enqueue(self, event: dict) -> None:
         event_id = event.get("id") or str(uuid.uuid4())
         timestamp = event.get("timestamp") or _utcnow_iso()
-        filename = f"{timestamp}-{self.name}-{event_id}.json"
+        # Slugify so the filename is safe (event ids may contain `:`, `/`,
+        # `#`, etc. — common in github:pr:owner/repo#42 style ids).
+        filename = f"{_safe(timestamp)}-{self.name}-{_safe(event_id)}.json"
         path = self.queue_dir / "pending" / filename
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(event, indent=2))
@@ -67,3 +70,11 @@ class Connector(ABC):
 
 def _utcnow_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+_FILENAME_UNSAFE = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def _safe(value: str) -> str:
+    """Make `value` filesystem-safe. Collapses runs of unsafe chars into '-'."""
+    return _FILENAME_UNSAFE.sub("-", value).strip("-")

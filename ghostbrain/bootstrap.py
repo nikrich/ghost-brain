@@ -51,6 +51,7 @@ CONTEXT_SUBDIRS: tuple[str, ...] = (
     "claude/artifacts/code",
     "claude/artifacts/unresolved",
     "github/prs",
+    "github/issues",
     "github/repos",
     "jira/tickets",
     "confluence",
@@ -163,6 +164,54 @@ with filler.
 Yesterday's data:
 
 {{events}}
+"""
+
+_ALL_DASHBOARD = """\
+# All contexts — dashboard
+
+Cross-context view of recent activity. Requires the Dataview plugin.
+
+## Open PRs
+
+```dataview
+TABLE WITHOUT ID
+  link(file.path, default(title, file.name)) AS PR,
+  context,
+  metadata.repo AS Repo,
+  metadata.origin AS Origin,
+  ingestedAt AS "Captured"
+FROM "20-contexts"
+WHERE type = "pr"
+  AND (metadata.state = "OPEN" OR metadata.state = null)
+SORT ingestedAt DESC
+LIMIT 25
+```
+
+## Recent Claude Code sessions
+
+```dataview
+TABLE WITHOUT ID
+  link(file.path, default(title, file.name)) AS Session,
+  context,
+  routingMethod AS Routed,
+  ingestedAt AS "Captured"
+FROM "20-contexts"
+WHERE source = "claude-code" AND type = "session"
+SORT ingestedAt DESC
+LIMIT 15
+```
+
+## Anything routed to needs_review
+
+```dataview
+TABLE WITHOUT ID
+  link(file.path, default(title, file.name)) AS Note,
+  source,
+  routingReasoning AS Why
+FROM "00-inbox"
+WHERE context = "needs_review"
+SORT ingestedAt DESC
+```
 """
 
 # Files written verbatim if missing. Keyed by relative path under vault/.
@@ -326,7 +375,7 @@ exactly: sanlam / codeship / reducedrecipes / personal. -->
 - TODO: hobby projects, life threads worth context.
 """,
     "80-profile/_recent.md": "<!-- Auto-managed by ghostbrain (Phase 6). Do not hand-edit. -->\n",
-    "60-dashboards/all.md": "# All contexts dashboard\n\nDataview queries land in Phase 4.\n",
+    "60-dashboards/all.md": _ALL_DASHBOARD,
 }
 
 

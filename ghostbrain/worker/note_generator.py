@@ -98,7 +98,10 @@ def _filename_for(event: dict, note_id: str) -> str:
     ts_slug = re.sub(r"[^0-9TZ]", "", ts)[:15]  # 20260507T103000
     title = event.get("title") or note_id
     title_slug = _slugify(title)[:60] or "note"
-    return f"{ts_slug}-{title_slug}-{note_id[:8]}.md"
+    # Note ids may include `:` and `/` (e.g. `github:pr:owner/repo#42`).
+    # Slugify before truncating so the suffix is filesystem-safe.
+    id_suffix = _slugify(note_id)[:12] or "id"
+    return f"{ts_slug}-{title_slug}-{id_suffix}.md"
 
 
 def _slugify(text: str) -> str:
@@ -113,7 +116,11 @@ def _context_target_dir(context: str, source: str, type_: str) -> Path:
     if source in ("claude-code", "claude-desktop"):
         return base / "claude" / "sessions"
     if source == "github":
-        return base / "github" / ("prs" if type_ == "pr" else "repos")
+        if type_ == "pr":
+            return base / "github" / "prs"
+        if type_ == "issue":
+            return base / "github" / "issues"
+        return base / "github" / "repos"
     if source == "jira":
         return base / "jira" / "tickets"
     if source == "confluence":

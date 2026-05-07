@@ -5,11 +5,12 @@ your tools (Claude Code & Desktop, GitHub, Jira, Confluence, Slack, Gmail,
 Teams, Calendar) into an Obsidian vault, classifies and summarizes it with
 an LLM, and serves it back as a daily digest.
 
-> **Status: alpha.** Phases 1–3 + Phase 5 (Daily Digest) of the
+> **Status: alpha.** Phases 1–5 of the
 > [build sequence](./spec/SPEC.md#section-9--build-sequence-phased) are
-> complete. External connectors (GitHub, Jira, etc.) and profile
-> auto-update are next. The system is designed to be incrementally adopted
-> phase by phase.
+> complete: foundation, profile, Claude Code capture, GitHub connector,
+> daily digest. Profile auto-update and other connectors (Jira, Slack,
+> Gmail, Calendar) are next. The system is designed to be incrementally
+> adopted phase by phase.
 
 ## Why
 
@@ -219,6 +220,41 @@ in review-only mode.
 **Extractor.** In `live` mode, every Claude session also goes through the
 LLM extractor, which writes specs/decisions/code/prompts/unresolved items
 under `20-contexts/<ctx>/claude/artifacts/<type>/`.
+
+## GitHub connector (Phase 4)
+
+Polls GitHub for PRs you authored, PRs requesting your review, and issues
+assigned to you — filtered to orgs in `<vault>/90-meta/routing.yaml` under
+`github.orgs`. Auth piggybacks on `gh auth login` so no token is needed.
+
+Edit `<vault>/90-meta/routing.yaml` to map your orgs to contexts:
+
+```yaml
+github:
+  orgs:
+    YourOrg: codeship
+    YourEmployer: work
+    YourSideProject: side
+```
+
+Owners not in the map fall through to the LLM router (and likely
+`needs_review`).
+
+Run manually:
+
+```bash
+ghostbrain-github-fetch                # queue events for the worker
+ghostbrain-github-fetch --dry-run      # preview without enqueueing
+```
+
+PR notes land at `<vault>/20-contexts/<ctx>/github/prs/<owner>-<repo>-<number>.md`.
+Issues at `.../github/issues/`.
+
+Schedule via launchd (every 2 hours):
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.ghostbrain.github.plist
+```
 
 ## Daily digest (Phase 5)
 

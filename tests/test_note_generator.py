@@ -59,6 +59,38 @@ def test_skips_context_for_needs_review(vault: Path) -> None:
     assert result.context_path is None
 
 
+def test_github_pr_routes_to_prs_subdir(vault: Path) -> None:
+    event = {
+        "id": "github:pr:CodeshipAI/x#1",
+        "source": "github", "type": "pr",
+        "timestamp": "2026-05-07T10:00:00Z",
+        "title": "feat: ship",
+        "metadata": {"repo": "CodeshipAI/x", "org": "CodeshipAI"},
+    }
+    result = write_note(event, _decision("codeship"),
+                        body="# body", write_to_context=True)
+    assert result.context_path is not None
+    assert result.context_path.parent == (
+        vault / "20-contexts" / "codeship" / "github" / "prs"
+    )
+
+
+def test_github_issue_routes_to_issues_subdir(vault: Path) -> None:
+    event = {
+        "id": "github:issue:CodeshipAI/x#7",
+        "source": "github", "type": "issue",
+        "timestamp": "2026-05-07T10:00:00Z",
+        "title": "Bug: x",
+        "metadata": {"repo": "CodeshipAI/x", "org": "CodeshipAI"},
+    }
+    result = write_note(event, _decision("codeship"),
+                        body="# body", write_to_context=True)
+    assert result.context_path is not None
+    assert result.context_path.parent == (
+        vault / "20-contexts" / "codeship" / "github" / "issues"
+    )
+
+
 def test_frontmatter_includes_routing_metadata(vault: Path) -> None:
     result = write_note(
         _event(), _decision("codeship", 0.9),
