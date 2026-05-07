@@ -121,6 +121,50 @@ Conversation excerpt:
 {{content}}
 """
 
+_DIGEST_PROMPT = """\
+<!-- Digest prompt. Used by ghostbrain.worker.digest. -->
+
+You are writing a daily digest for a personal knowledge system. The user
+reads this once per morning and wants to know what happened yesterday across
+their work contexts in under 2 minutes.
+
+Tone:
+- Direct. No preamble. No "I hope this helps".
+- Plain markdown. No emoji. No marketing voice.
+- Per-context sections only when that context had activity. Skip silently
+  when empty.
+- Short bullets, not paragraphs.
+
+Structure (omit any section that has no content):
+
+```markdown
+# Digest — {{day_name}}, {{date}}
+
+## Yesterday at a glance
+
+[1-2 sentences. Lead with the most important thing.]
+
+## Needs your decision
+
+[Only if events landed in needs_review. Skip otherwise.]
+
+## <Context name>
+
+[One section per context with activity. 2-4 bullets max.]
+
+## System health
+
+[One line.]
+```
+
+Be conservative — a 6-line digest is better than a 20-line digest padded
+with filler.
+
+Yesterday's data:
+
+{{events}}
+"""
+
 # Files written verbatim if missing. Keyed by relative path under vault/.
 SEED_FILES: dict[str, str] = {
     "90-meta/routing.yaml": """\
@@ -213,7 +257,7 @@ profile:
     "90-meta/prompts/router.md": _ROUTER_PROMPT,
     "90-meta/prompts/extractor.md": _EXTRACTOR_PROMPT,
     "90-meta/prompts/profile-updater.md": "# Profile updater prompt\n\nDefined in Phase 6 (SPEC §6.3).\n",
-    "90-meta/prompts/digest.md": "# Digest prompt\n\nDefined in Phase 5 (SPEC §6.4).\n",
+    "90-meta/prompts/digest.md": _DIGEST_PROMPT,
     "90-meta/prompts/classifier.md": "# Classifier prompt\n\nUsed for fine-grained classification. Defined later.\n",
     "80-profile/_index.md": """\
 # Profile index

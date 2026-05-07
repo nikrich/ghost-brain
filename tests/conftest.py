@@ -22,6 +22,7 @@ def vault(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         "ghostbrain.worker.router",
         "ghostbrain.worker.extractor",
         "ghostbrain.worker.pipeline",
+        "ghostbrain.worker.digest",
         "ghostbrain.worker.main",
     ):
         try:

@@ -5,9 +5,10 @@ your tools (Claude Code & Desktop, GitHub, Jira, Confluence, Slack, Gmail,
 Teams, Calendar) into an Obsidian vault, classifies and summarizes it with
 an LLM, and serves it back as a daily digest.
 
-> **Status: alpha.** Phases 1–3 of the [build sequence](./spec/SPEC.md#section-9--build-sequence-phased)
-> are complete. Daily-digest, profile auto-update, and external connectors
-> (Phase 4+) are next. The system is designed to be incrementally adopted
+> **Status: alpha.** Phases 1–3 + Phase 5 (Daily Digest) of the
+> [build sequence](./spec/SPEC.md#section-9--build-sequence-phased) are
+> complete. External connectors (GitHub, Jira, etc.) and profile
+> auto-update are next. The system is designed to be incrementally adopted
 > phase by phase.
 
 ## Why
@@ -219,6 +220,34 @@ in review-only mode.
 LLM extractor, which writes specs/decisions/code/prompts/unresolved items
 under `20-contexts/<ctx>/claude/artifacts/<type>/`.
 
+## Daily digest (Phase 5)
+
+Once a day at 06:30 (when the launchd timer is loaded), the worker generates
+a digest of yesterday's activity at `<vault>/10-daily/<date>.md`. Per-context
+digests at `<vault>/10-daily/by-context/<ctx>-<date>.md` are emitted only
+when a context had >= 5 events or >= 2 artifacts that day.
+
+Run it manually:
+
+```bash
+ghostbrain-digest                     # for today
+ghostbrain-digest --date 2026-05-08   # for any specific date
+```
+
+The digest reads:
+- Yesterday's audit log (`90-meta/audit/<date>.jsonl`).
+- Frontmatter of every routed/inbox note from yesterday.
+
+It writes a markdown file with frontmatter + a Sonnet-generated body
+following the prompt in `<vault>/90-meta/prompts/digest.md`. Tone and
+structure are tunable by editing that file.
+
+Schedule it via launchd (after templating the plist with your paths):
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.ghostbrain.digest.plist
+```
+
 ## LLM client
 
 `ghostbrain.llm.client.run()` shells out to `claude -p` so calls inherit your
@@ -292,6 +321,7 @@ ghost-brain/
 │       ├── router.py                   # path-first then LLM
 │       ├── note_generator.py           # frontmatter + body writer
 │       ├── extractor.py                # LLM artifact extraction
+│       ├── digest.py                   # daily digest generator
 │       └── audit.py                    # JSONL audit log writer
 ├── orchestration/
 │   ├── hooks/session-end.sh            # Claude Code SessionEnd hook

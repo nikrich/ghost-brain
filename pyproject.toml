@@ -31,6 +31,7 @@ dev = [
 ghostbrain-bootstrap = "ghostbrain.bootstrap:main"
 ghostbrain-worker = "ghostbrain.worker.main:main"
 ghostbrain-claude-md = "ghostbrain.profile.claude_md:main"
+ghostbrain-digest = "ghostbrain.worker.digest:main"
 
 [tool.setuptools.packages.find]
 include = ["ghostbrain*"]
