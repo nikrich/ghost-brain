@@ -35,13 +35,14 @@ pip install -e ".[dev]"
 ### 2. Configure environment
 
 ```bash
-export ANTHROPIC_API_KEY="sk-ant-..."   # required from Phase 3 onwards
 export VAULT_PATH="$HOME/ghostbrain/vault"   # default; override if you want
 ```
 
-Add the `export ANTHROPIC_API_KEY=...` line to `~/.zshrc` (or wherever you keep
-secrets) so launchd-spawned children inherit it. The launchd plist also accepts
-inline `EnvironmentVariables` if you prefer that route.
+**No `ANTHROPIC_API_KEY` is required.** All LLM calls shell out to
+`claude -p "<prompt>" --output-format json`, so they bill against your Claude
+Max subscription rather than the metered API. Make sure `claude` is on `PATH`
+and that you're logged in (`claude` interactive session works) before Phase 3
+work runs. See SPEC §12.1 for the rationale.
 
 ### 3. Bootstrap the vault
 

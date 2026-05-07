@@ -31,8 +31,10 @@
     <dict>
         <key>VAULT_PATH</key>
         <string>/Users/jannik/ghostbrain/vault</string>
-        <!-- TODO(jannik): set ANTHROPIC_API_KEY here once Phase 3 lands.
-             For now the Phase 1 worker does not call the LLM. -->
+        <!-- LLM calls shell out to `claude -p` (Claude Max). launchd PATH is
+             minimal, so include the Homebrew dir where the Claude CLI lives. -->
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
 </dict>
 </plist>

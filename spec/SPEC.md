@@ -942,8 +942,9 @@ All plists live in `secondbrain/orchestration/launchd/`. Loaded via `launchctl l
     <string>/Users/jannik/secondbrain/logs/worker.err</string>
     <key>EnvironmentVariables</key>
     <dict>
-        <key>ANTHROPIC_API_KEY</key>
-        <string>TODO(jannik): set via setup.sh</string>
+        <key>VAULT_PATH</key>
+        <string>/Users/jannik/ghostbrain/vault</string>
+        <!-- LLM calls go through `claude -p` (uses Max). No API key needed. -->
     </dict>
 </dict>
 </plist>
@@ -1084,15 +1085,32 @@ secondbrain/
 
 ## Section 12 — Operational Notes
 
-### 12.1 Cost Estimates (Anthropic API)
+### 12.1 LLM Backend and Costs
 
-Daily LLM costs (approximate, Sonnet 4):
-- Router: ~50 calls × small prompt = $0.05
-- Extractor: ~10 sessions × medium prompt = $0.30
-- Profile updater: ~10 sessions × medium prompt = $0.50
-- Digest: 1 call × large prompt = $0.20
+**Decision (post-Phase 2):** all LLM calls shell out to the Claude Code CLI
+(`claude -p "<prompt>" --output-format json`) so they bill against Jannik's
+Claude Max subscription rather than a metered Anthropic API key. This is a
+deviation from the original spec, taken to avoid double-paying for usage that
+Max already covers.
 
-**Total: ~$1-2/day, ~$30-60/month.** Use Haiku for routing to cut further.
+Implementation lives in `ghostbrain/llm/client.py` (Phase 3+): a thin wrapper
+that runs the `claude` subprocess, parses JSON output, and surfaces errors.
+No `ANTHROPIC_API_KEY` is required.
+
+Per-call latency is ~1-2 seconds of subprocess overhead on top of model
+inference. For ghostbrain's volumes (router ~50/day, extractor/profile ~10
+sessions/day, digest 1/day) this is fine.
+
+**Concurrency note.** Max has rate limits per 5-hour window. Bursty backfill
+(dropping >100 events into `pending/` at once) can hit them. The worker must
+back off on rate-limit errors — Phase 3 owns the retry policy.
+
+**If you ever need to switch to the Anthropic API** (e.g., for production
+multi-user deployment), wrap the LLM client behind an interface and have a
+second implementation that uses the SDK with `ANTHROPIC_API_KEY`. Current
+estimated metered cost would be: router ~$0.05/day, extractor ~$0.30/day,
+profile updater ~$0.50/day, digest ~$0.20/day → ~$30-60/month total with
+Sonnet, less with Haiku for routing.
 
 ### 12.2 Failure Modes and Recovery
 
@@ -1128,8 +1146,11 @@ These need answers from Jannik before relevant phases:
 2. **GitHub org names** — needed for Phase 4 routing config. Defer until Phase 4.
 3. **Slack workspace IDs** — needed for Phase 9. Defer until Phase 9.
 4. **Sanlam Teams tenant policy** — does Entra allow app registration? Resolved or skipped at Phase 12.
-5. **Anthropic API key** — required from Phase 1. Add to env via `setup.sh`.
-6. **Vault location on disk** — default `~/secondbrain/vault/`. Configurable.
+5. **LLM backend** — *Resolved (post-Phase 2):* use the Claude Code CLI
+   (`claude -p`) so calls bill against Claude Max. No `ANTHROPIC_API_KEY` is
+   needed. See §12.1.
+6. **Vault location on disk** — default `~/ghostbrain/vault/`. Configurable
+   via `VAULT_PATH` env var.
 
 ---
 
