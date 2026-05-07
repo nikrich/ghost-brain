@@ -33,6 +33,8 @@ ghostbrain-worker = "ghostbrain.worker.main:main"
 ghostbrain-claude-md = "ghostbrain.profile.claude_md:main"
 ghostbrain-digest = "ghostbrain.worker.digest:main"
 ghostbrain-github-fetch = "ghostbrain.connectors.github.__main__:main"
+ghostbrain-profile-apply = "ghostbrain.profile.apply:main"
+ghostbrain-profile-decay = "ghostbrain.profile.decay:main"
 
 [tool.setuptools.packages.find]
 include = ["ghostbrain*"]

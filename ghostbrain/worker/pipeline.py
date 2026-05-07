@@ -6,9 +6,10 @@ Pipeline (SPEC §5.3):
 3. Generate note — frontmatter + body, written to inbox + (when allowed)
    the routed context location.
 4. Extract artifacts — claude-code only; LLM call. Best-effort.
-5. Audit — caller (run_loop) writes the success/fail line.
+5. Propose profile diffs — claude-code only; LLM call. Best-effort.
+6. Audit — caller (run_loop) writes the success/fail line.
 
-Backlinking and profile-diff are not in this phase (Phase 6).
+Backlinking is deferred to a later phase.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from ghostbrain.connectors.claude_code.parser import (
     parse_transcript,
 )
 from ghostbrain.paths import vault_path
+from ghostbrain.profile import diff as profile_diff
 from ghostbrain.worker import extractor as artifact_extractor
 from ghostbrain.worker.note_generator import NoteWriteResult, write_note
 from ghostbrain.worker.router import RoutingDecision, route_event
@@ -77,6 +79,7 @@ def process_event(event: dict) -> dict:
     )
 
     artifact_paths: list[Path] = []
+    profile_proposals_count = 0
     if (event.get("source") in CLAUDE_SOURCES
             and excerpt
             and decision.context not in ("needs_review", "")
@@ -88,6 +91,15 @@ def process_event(event: dict) -> dict:
             parent_note_path=note.context_path or note.inbox_path,
             config=config,
         )
+        # Profile diff proposal — best-effort, errors are logged inside.
+        proposals = profile_diff.propose_for_session(
+            excerpt=excerpt,
+            parent_event_id=event.get("id", ""),
+            parent_session_id=(digest.session_id if digest else None),
+            parent_note_path=note.context_path or note.inbox_path,
+            config=config,
+        )
+        profile_proposals_count = len(proposals)
 
     return {
         "context": decision.context,
@@ -97,6 +109,7 @@ def process_event(event: dict) -> dict:
         "inbox_path": str(note.inbox_path),
         "context_path": str(note.context_path) if note.context_path else None,
         "artifact_count": len(artifact_paths),
+        "profile_proposals": profile_proposals_count,
     }
 
 

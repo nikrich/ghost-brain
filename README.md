@@ -5,10 +5,10 @@ your tools (Claude Code & Desktop, GitHub, Jira, Confluence, Slack, Gmail,
 Teams, Calendar) into an Obsidian vault, classifies and summarizes it with
 an LLM, and serves it back as a daily digest.
 
-> **Status: alpha.** Phases 1–5 of the
+> **Status: alpha.** Phases 1–6 of the
 > [build sequence](./spec/SPEC.md#section-9--build-sequence-phased) are
 > complete: foundation, profile, Claude Code capture, GitHub connector,
-> daily digest. Profile auto-update and other connectors (Jira, Slack,
+> daily digest, profile auto-update. Other connectors (Jira, Slack,
 > Gmail, Calendar) are next. The system is designed to be incrementally
 > adopted phase by phase.
 
@@ -284,6 +284,46 @@ Schedule it via launchd (after templating the plist with your paths):
 launchctl load ~/Library/LaunchAgents/com.ghostbrain.digest.plist
 ```
 
+## Profile auto-update (Phase 6)
+
+Each Claude Code session, after extraction, calls the profile-updater LLM
+with the session digest + your current profile. It proposes diffs as
+JSON lines under `<vault>/80-profile/_proposed/<date>.jsonl`. Nothing
+changes the profile yet.
+
+A weekly job (`ghostbrain-profile-apply`, scheduled Sunday 22:00) groups
+the past 7 days of proposals by `(field, operation, normalized after-text)`:
+
+- **3+ corroborating proposals on `current-projects`** → auto-applied as
+  bullets under the right context heading. Audit logs each.
+- **Stable layer** (`working-style`, `preferences`) → never auto-applies.
+  All proposals land in `<vault>/80-profile/_review.md` for you to apply
+  by hand.
+- **1-2 proposals on Current** → discarded. Coincidences shouldn't change
+  your profile.
+- **Contradictions of existing facts** → `_review.md`.
+
+A monthly job (`ghostbrain-profile-decay`, scheduled day-1 22:00):
+
+- Items in Current not reinforced in 60 days → archived to `_archive.md`.
+  Hand-edited items (no audit history) are left alone.
+- Items stable for 30+ days → proposed for the Stable layer in
+  `_pending_stable.md`. You promote by hand.
+
+To enable both:
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.ghostbrain.profile-weekly.plist
+launchctl load ~/Library/LaunchAgents/com.ghostbrain.profile-monthly.plist
+```
+
+Manual triggers (any time):
+
+```bash
+ghostbrain-profile-apply [--date 2026-05-08]
+ghostbrain-profile-decay [--date 2026-05-08]
+```
+
 ## LLM client
 
 `ghostbrain.llm.client.run()` shells out to `claude -p` so calls inherit your
@@ -350,7 +390,11 @@ ghost-brain/
 │   │   ├── _base.py                    # base Connector class
 │   │   └── claude_code/parser.py       # session JSONL → digest
 │   ├── llm/client.py                   # `claude -p` subprocess wrapper
-│   ├── profile/claude_md.py            # per-project CLAUDE.md generator
+│   ├── profile/
+│   │   ├── claude_md.py                # per-project CLAUDE.md generator
+│   │   ├── diff.py                     # per-session diff proposer
+│   │   ├── apply.py                    # weekly applier
+│   │   └── decay.py                    # monthly decay + promotion
 │   └── worker/
 │       ├── main.py                     # run loop
 │       ├── pipeline.py                 # parse → route → note → extract

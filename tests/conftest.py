@@ -17,6 +17,9 @@ def vault(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     # Reload modules that import from paths so they see the new VAULT_PATH.
     for mod in (
         "ghostbrain.profile.claude_md",
+        "ghostbrain.profile.diff",
+        "ghostbrain.profile.apply",
+        "ghostbrain.profile.decay",
         "ghostbrain.worker.audit",
         "ghostbrain.worker.note_generator",
         "ghostbrain.worker.router",

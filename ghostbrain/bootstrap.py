@@ -122,6 +122,49 @@ Conversation excerpt:
 {{content}}
 """
 
+_PROFILE_UPDATER_PROMPT = """\
+<!-- Profile updater prompt. Used by ghostbrain.profile.diff per Claude
+session. Output is a JSON object envelope wrapping an array of proposed
+diffs. -->
+
+RESPOND WITH JSON ONLY. NO PROSE. NO MARKDOWN FENCES. NO PREAMBLE.
+Your entire response must be a single JSON object of the form:
+`{"diffs": [...]}` — possibly empty: `{"diffs": []}`.
+
+You are maintaining a profile of the user. Read the conversation excerpt
+below and propose profile changes ONLY for facts you are confident about.
+**Be conservative.** Single offhand mentions are NOT confident updates.
+
+Fields: `current-projects` (auto-applied), `preferences`/`working-style`
+(stable, manual review), `people`, `decisions`.
+
+Operations: `add`, `update`, `contradict`.
+
+## Current profile
+
+{{profile}}
+
+## Conversation excerpt
+
+{{conversation}}
+
+Output:
+
+```
+{"diffs": [
+  {
+    "field": "...", "operation": "...",
+    "before": "...", "after": "...",
+    "evidence": "exact short quote", "confidence": 0.0
+  }
+]}
+```
+
+Return `{"diffs": []}` whenever the conversation is exploratory or
+doesn't surface durable profile facts. Empty is the right answer most
+of the time.
+"""
+
 _DIGEST_PROMPT = """\
 <!-- Digest prompt. Used by ghostbrain.worker.digest. -->
 
@@ -305,7 +348,7 @@ profile:
 """,
     "90-meta/prompts/router.md": _ROUTER_PROMPT,
     "90-meta/prompts/extractor.md": _EXTRACTOR_PROMPT,
-    "90-meta/prompts/profile-updater.md": "# Profile updater prompt\n\nDefined in Phase 6 (SPEC §6.3).\n",
+    "90-meta/prompts/profile-updater.md": _PROFILE_UPDATER_PROMPT,
     "90-meta/prompts/digest.md": _DIGEST_PROMPT,
     "90-meta/prompts/classifier.md": "# Classifier prompt\n\nUsed for fine-grained classification. Defined later.\n",
     "80-profile/_index.md": """\
