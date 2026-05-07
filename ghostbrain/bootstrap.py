@@ -63,7 +63,7 @@ CONTEXT_SUBDIRS: tuple[str, ...] = (
 SEED_FILES: dict[str, str] = {
     "90-meta/routing.yaml": """\
 # Routing rules — maps source signals to one of: sanlam, codeship, reducedrecipes, personal.
-# Filled in over later phases. TODO(jannik) markers indicate values to provide
+# Filled in over later phases. TODO markers indicate values to provide
 # when the relevant connector lands.
 
 version: 1
@@ -71,16 +71,16 @@ version: 1
 # GitHub orgs → context. Phase 4.
 github:
   orgs:
-    # TODO(jannik): "sanlam-org": sanlam
-    # TODO(jannik): "codeship-tech": codeship
-    # TODO(jannik): "reducedrecipes": reducedrecipes
+    # TODO: "sanlam-org": sanlam
+    # TODO: "codeship-tech": codeship
+    # TODO: "reducedrecipes": reducedrecipes
     {}
 
 # Jira sites → context. Phase 7.
 jira:
   sites:
-    # TODO(jannik): "sanlam.atlassian.net": sanlam
-    # TODO(jannik): "codeship.atlassian.net": codeship
+    # TODO: "sanlam.atlassian.net": sanlam
+    # TODO: "codeship.atlassian.net": codeship
     {}
 
 # Confluence spaces → context. Phase 7.
@@ -106,7 +106,7 @@ gmail:
 # Used by ghostbrain.profile.claude_md to pick the right context profile.
 claude_code:
   project_paths:
-    # TODO(jannik): adjust these to your actual development tree.
+    # TODO: adjust these to your actual development tree.
     # Examples:
     # "~/development/sft-capstone-hive": sanlam
     # "~/development/sanlam-digisure": sanlam
@@ -171,13 +171,13 @@ files are managed by ghostbrain.
 <!-- Hand-write this. Replace placeholders below. -->
 
 ## Decision style
-- TODO(jannik): how you want to be presented with options vs decided answers.
+- TODO: how you want to be presented with options vs decided answers.
 
 ## Communication preferences
-- TODO(jannik): tone, terseness, what to never do (e.g. "no emoji").
+- TODO: tone, terseness, what to never do (e.g. "no emoji").
 
 ## Workflow
-- TODO(jannik): TDD / commit cadence / how PRs should be sized.
+- TODO: TDD / commit cadence / how PRs should be sized.
 """,
     "80-profile/preferences.md": """\
 # Preferences
@@ -185,13 +185,13 @@ files are managed by ghostbrain.
 <!-- Hand-write this. -->
 
 ## Tools
-- TODO(jannik): preferred editor, shell, package managers.
+- TODO: preferred editor, shell, package managers.
 
 ## Languages
-- TODO(jannik): which languages and idioms you actually use day-to-day.
+- TODO: which languages and idioms you actually use day-to-day.
 
 ## What I don't want
-- TODO(jannik): patterns to avoid, words/phrases that grate.
+- TODO: patterns to avoid, words/phrases that grate.
 """,
     "80-profile/current-projects.md": """\
 # Current projects
@@ -201,16 +201,16 @@ this file to the H2 matching the project's context. Keep section names
 exactly: sanlam / codeship / reducedrecipes / personal. -->
 
 ## sanlam
-- TODO(jannik): active Sanlam initiatives.
+- TODO: active Sanlam initiatives.
 
 ## codeship
-- TODO(jannik): active Codeship clients/products.
+- TODO: active Codeship clients/products.
 
 ## reducedrecipes
-- TODO(jannik): ReducedRecipes priorities.
+- TODO: ReducedRecipes priorities.
 
 ## personal
-- TODO(jannik): hobby projects, life threads worth context.
+- TODO: hobby projects, life threads worth context.
 """,
     "80-profile/_recent.md": "<!-- Auto-managed by ghostbrain (Phase 6). Do not hand-edit. -->\n",
     "60-dashboards/all.md": "# All contexts dashboard\n\nDataview queries land in Phase 4.\n",

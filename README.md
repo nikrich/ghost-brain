@@ -126,19 +126,26 @@ ghostbrain-worker
 
 **Under launchd (always-on):**
 
-The plists in `orchestration/launchd/` contain absolute paths from the
-original author's machine. Edit them to use your repo path, username, and
-vault location before loading. (A templated `setup.sh` is planned for
-Phase 14.)
+The plists in `orchestration/launchd/` are templates with two placeholders:
+`__REPO_ROOT__` (your local clone path) and `__VAULT_PATH__` (your vault).
+Substitute and install them with:
 
 ```bash
 mkdir -p logs ~/Library/LaunchAgents
-# Edit the plists first, then:
-cp orchestration/launchd/*.plist ~/Library/LaunchAgents/
+
+for f in orchestration/launchd/*.plist; do
+  sed \
+    -e "s|__REPO_ROOT__|$PWD|g" \
+    -e "s|__VAULT_PATH__|${VAULT_PATH:-$HOME/ghostbrain/vault}|g" \
+    "$f" > "$HOME/Library/LaunchAgents/$(basename $f)"
+done
+
 launchctl load ~/Library/LaunchAgents/com.ghostbrain.worker.plist
+launchctl load ~/Library/LaunchAgents/com.ghostbrain.claudemd.plist
 ```
 
-Stop it with `launchctl unload ~/Library/LaunchAgents/com.ghostbrain.worker.plist`.
+Stop them with `launchctl unload <path>`. (A templated `setup.sh` will
+encapsulate this in Phase 14.)
 
 ## Profile and CLAUDE.md generation
 
@@ -163,8 +170,8 @@ ghostbrain-claude-md /path/to/your/project
 ghostbrain-claude-md --all
 ```
 
-To schedule a nightly regen, load `com.ghostbrain.claudemd.plist` (after
-editing it for your machine) — runs daily at 02:00.
+To schedule a nightly regen, install `com.ghostbrain.claudemd.plist` (the
+sed snippet above handles both plists in one pass) — runs daily at 02:00.
 
 ## Verifying the install
 
