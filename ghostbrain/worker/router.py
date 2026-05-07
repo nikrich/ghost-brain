@@ -1,0 +1,164 @@
+"""Route an event to one of the configured contexts.
+
+Strategy: path-first (free, instant), LLM fallback (only when no rule matches).
+
+- ``route_event(event)`` returns ``(context, confidence, reasoning)``.
+- For events with a ``metadata.projectPath`` that matches a rule in
+  ``routing.yaml:claude_code.project_paths``, confidence is 1.0 and we never
+  call the LLM.
+- Otherwise we ask the router LLM (Haiku) to classify.
+- If the LLM returns ``"needs_review"`` or confidence < ``reject_below``, we
+  fall through and the caller routes to the review queue.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import json
+import logging
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from ghostbrain.llm import client as llm
+from ghostbrain.paths import vault_path
+from ghostbrain.profile.claude_md import detect_context
+
+log = logging.getLogger("ghostbrain.worker.router")
+
+ROUTER_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["context", "confidence", "reasoning"],
+    "properties": {
+        "context": {
+            "type": "string",
+            "enum": [
+                "sanlam", "codeship", "reducedrecipes", "personal",
+                "needs_review",
+            ],
+        },
+        "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "reasoning": {"type": "string", "maxLength": 400},
+        "secondary_contexts": {
+            "type": "array",
+            "items": {"type": "string"},
+            "maxItems": 3,
+        },
+    },
+}
+
+
+@dataclasses.dataclass
+class RoutingDecision:
+    context: str
+    confidence: float
+    reasoning: str
+    method: str  # "path" | "llm" | "fallback"
+    secondary_contexts: list[str] = dataclasses.field(default_factory=list)
+
+
+def route_event(
+    event: dict,
+    *,
+    content_excerpt: str | None = None,
+    routing: dict | None = None,
+    config: dict | None = None,
+) -> RoutingDecision:
+    routing = routing or _load_yaml("routing.yaml")
+    config = config or _load_yaml("config.yaml")
+
+    project_path = (event.get("metadata") or {}).get("projectPath")
+    if project_path:
+        ctx = detect_context(Path(project_path), routing=routing)
+        if ctx:
+            log.info("path-routed event=%s ctx=%s path=%s",
+                     event.get("id"), ctx, project_path)
+            return RoutingDecision(
+                context=ctx,
+                confidence=1.0,
+                reasoning=f"matched routing.yaml rule for {project_path}",
+                method="path",
+            )
+
+    excerpt = content_excerpt or _build_excerpt_from_event(event)
+    if not excerpt.strip():
+        return RoutingDecision(
+            context="needs_review",
+            confidence=0.0,
+            reasoning="no content available to classify",
+            method="fallback",
+        )
+
+    return _route_via_llm(event, excerpt, config)
+
+
+def _route_via_llm(event: dict, excerpt: str, config: dict) -> RoutingDecision:
+    prompt_template = _read_prompt("router.md")
+    prompt = prompt_template.replace("{{content}}", excerpt)
+
+    thresholds = (config.get("thresholds") or {})
+    reject_below = float(thresholds.get("reject_below", 0.5))
+
+    try:
+        result = llm.run(
+            prompt,
+            model=(config.get("llm") or {}).get("router_model", "haiku"),
+            json_schema=ROUTER_JSON_SCHEMA,
+        )
+        payload = result.as_json()
+    except llm.LLMError as e:
+        log.warning("router LLM failed for event=%s: %s", event.get("id"), e)
+        return RoutingDecision(
+            context="needs_review",
+            confidence=0.0,
+            reasoning=f"router LLM error: {e}",
+            method="fallback",
+        )
+
+    ctx = payload.get("context", "needs_review")
+    conf = float(payload.get("confidence", 0.0))
+    reason = payload.get("reasoning", "")
+    secondary = payload.get("secondary_contexts", []) or []
+
+    if ctx == "needs_review" or conf < reject_below:
+        log.info("LLM routed to review event=%s conf=%.2f", event.get("id"), conf)
+
+    return RoutingDecision(
+        context=ctx,
+        confidence=conf,
+        reasoning=reason,
+        method="llm",
+        secondary_contexts=list(secondary)[:3],
+    )
+
+
+def _build_excerpt_from_event(event: dict) -> str:
+    parts: list[str] = []
+    if event.get("title"):
+        parts.append(f"Title: {event['title']}")
+    if event.get("source"):
+        parts.append(f"Source: {event['source']}")
+    if event.get("type"):
+        parts.append(f"Type: {event['type']}")
+    body = event.get("body")
+    if body:
+        parts.append(f"\n{body}")
+    return "\n".join(parts)
+
+
+def _load_yaml(name: str) -> dict:
+    f = vault_path() / "90-meta" / name
+    if not f.exists():
+        return {}
+    return yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+
+
+def _read_prompt(name: str) -> str:
+    f = vault_path() / "90-meta" / "prompts" / name
+    if not f.exists():
+        raise FileNotFoundError(
+            f"missing prompt {name}; re-run `ghostbrain-bootstrap`"
+        )
+    return f.read_text(encoding="utf-8")

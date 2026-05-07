@@ -1,24 +1,11 @@
-"""Unit tests for the CLAUDE.md generator (Phase 2)."""
+"""Unit tests for the CLAUDE.md generator (Phase 2). Uses the shared `vault`
+fixture in conftest.py."""
 
 from __future__ import annotations
 
-import importlib
 from pathlib import Path
 
 import pytest
-
-
-@pytest.fixture()
-def vault(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    monkeypatch.setenv("VAULT_PATH", str(tmp_path))
-    import ghostbrain.paths as _paths
-    importlib.reload(_paths)
-    import ghostbrain.profile.claude_md as cm
-    importlib.reload(cm)
-    # Bootstrap a minimal vault.
-    from ghostbrain.bootstrap import bootstrap
-    bootstrap(tmp_path)
-    return tmp_path
 
 
 def _routing_with(rules: dict[str, str]) -> dict:

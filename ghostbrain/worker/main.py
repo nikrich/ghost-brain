@@ -14,6 +14,7 @@ from pathlib import Path
 
 from ghostbrain.paths import queue_dir
 from ghostbrain.worker.audit import audit_log
+from ghostbrain.worker.pipeline import process_event as _pipeline_process_event
 
 SLEEP_INTERVAL = 5  # seconds between polls when the queue is empty
 
@@ -55,14 +56,9 @@ def _move(src: Path, dst_dir: Path) -> Path:
     return dst
 
 
-def process_event(event: dict) -> None:
-    """Phase 1 stub. Just log the event id.
-
-    Phase 3 replaces this with the real pipeline: routing → note generation
-    → artifact extraction → profile diff → backlinking.
-    """
-    log.info("Processing event id=%s source=%s type=%s",
-             event.get("id"), event.get("source"), event.get("type"))
+def process_event(event: dict) -> dict:
+    """Run an event through the full pipeline (Phase 3+)."""
+    return _pipeline_process_event(event)
 
 
 def run_loop() -> None:
@@ -81,9 +77,15 @@ def run_loop() -> None:
         try:
             event = json.loads(event_path.read_text(encoding="utf-8"))
             event_id = event.get("id", event_id)
-            process_event(event)
+            summary = process_event(event) or {}
             _move(event_path, root / "done")
-            audit_log("event_processed", event_id, status="success")
+            audit_log(
+                "event_processed",
+                event_id,
+                status="success",
+                source=event.get("source"),
+                **{k: v for k, v in summary.items() if v is not None},
+            )
         except Exception as e:  # noqa: BLE001
             log.exception("Processing failed for %s", event_id)
             failed_path = _move(event_path, root / "failed")

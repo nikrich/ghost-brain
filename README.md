@@ -5,9 +5,10 @@ your tools (Claude Code & Desktop, GitHub, Jira, Confluence, Slack, Gmail,
 Teams, Calendar) into an Obsidian vault, classifies and summarizes it with
 an LLM, and serves it back as a daily digest.
 
-> **Status: alpha.** Phases 1–2 of the [build sequence](./spec/SPEC.md#section-9--build-sequence-phased)
-> are complete. The LLM-driven processing pipeline (Phase 3+) is next. The
-> system is designed to be incrementally adopted phase by phase.
+> **Status: alpha.** Phases 1–3 of the [build sequence](./spec/SPEC.md#section-9--build-sequence-phased)
+> are complete. Daily-digest, profile auto-update, and external connectors
+> (Phase 4+) are next. The system is designed to be incrementally adopted
+> phase by phase.
 
 ## Why
 
@@ -173,6 +174,67 @@ ghostbrain-claude-md --all
 To schedule a nightly regen, install `com.ghostbrain.claudemd.plist` (the
 sed snippet above handles both plists in one pass) — runs daily at 02:00.
 
+## Capturing Claude Code sessions (Phase 3)
+
+The system reads finished Claude Code sessions via a `SessionEnd` hook and
+processes them through the worker pipeline:
+
+```
+SessionEnd hook → queue → worker → router → note generator → (extractor)
+```
+
+**Wire up the hook** by adding this entry to `~/.claude/settings.json`:
+
+```json
+"hooks": {
+  "SessionEnd": [{
+    "matcher": "*",
+    "hooks": [{
+      "type": "command",
+      "command": "/path/to/ghost-brain/orchestration/hooks/session-end.sh",
+      "shell": "bash",
+      "async": true
+    }]
+  }]
+}
+```
+
+The hook reads the standard SessionEnd payload from stdin
+(`session_id`, `transcript_path`, `cwd`, `reason`) and drops a normalized
+event into the queue. The worker picks it up within ~5 seconds.
+
+**Routing is path-first.** If the project's path matches a rule in
+`<vault>/90-meta/routing.yaml:claude_code.project_paths`, the event is
+routed instantly with confidence 1.0 — no LLM call. Only paths without a
+rule fall through to the LLM router.
+
+**Default mode is `review_only`.** Every event lands in
+`<vault>/00-inbox/raw/claude-code/` (always), but nothing is written under
+`20-contexts/<ctx>/` until you flip `worker.routing_mode` to `live` in
+`config.yaml`. The audit log captures every routing decision so you can
+spot-check accuracy before going live. SPEC §9 Phase 3 recommends 2 weeks
+in review-only mode.
+
+**Extractor.** In `live` mode, every Claude session also goes through the
+LLM extractor, which writes specs/decisions/code/prompts/unresolved items
+under `20-contexts/<ctx>/claude/artifacts/<type>/`.
+
+## LLM client
+
+`ghostbrain.llm.client.run()` shells out to `claude -p` so calls inherit your
+Max OAuth login. To keep cost (and Max-quota consumption) low it strips the
+default Claude Code system prompt with `--system-prompt` and pins a tiny
+auto-generated one. Models are configurable in `config.yaml`:
+
+```yaml
+llm:
+  router_model: haiku       # cheap routing fallback
+  extractor_model: sonnet   # extraction wants nuance
+  digest_model: sonnet      # Phase 5
+```
+
+A `--max-budget-usd` cap is set on each call as belt-and-suspenders.
+
 ## Verifying the install
 
 ```bash
@@ -219,12 +281,21 @@ ghost-brain/
 ├── ghostbrain/                         # Python package
 │   ├── paths.py                        # vault/queue/audit/state path resolution
 │   ├── bootstrap.py                    # vault tree creator (idempotent)
-│   ├── connectors/_base.py             # base Connector class
+│   ├── connectors/
+│   │   ├── _base.py                    # base Connector class
+│   │   └── claude_code/parser.py       # session JSONL → digest
+│   ├── llm/client.py                   # `claude -p` subprocess wrapper
 │   ├── profile/claude_md.py            # per-project CLAUDE.md generator
 │   └── worker/
-│       ├── main.py                     # run loop (Phase 1 stub pipeline)
+│       ├── main.py                     # run loop
+│       ├── pipeline.py                 # parse → route → note → extract
+│       ├── router.py                   # path-first then LLM
+│       ├── note_generator.py           # frontmatter + body writer
+│       ├── extractor.py                # LLM artifact extraction
 │       └── audit.py                    # JSONL audit log writer
-├── orchestration/launchd/              # launchd plists
+├── orchestration/
+│   ├── hooks/session-end.sh            # Claude Code SessionEnd hook
+│   └── launchd/                        # launchd plists (templated)
 └── tests/
 ```
 

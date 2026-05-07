@@ -49,6 +49,7 @@ CONTEXT_SUBDIRS: tuple[str, ...] = (
     "claude/artifacts/decisions",
     "claude/artifacts/prompts",
     "claude/artifacts/code",
+    "claude/artifacts/unresolved",
     "github/prs",
     "github/repos",
     "jira/tickets",
@@ -58,6 +59,82 @@ CONTEXT_SUBDIRS: tuple[str, ...] = (
     "projects",
     "people",
 )
+
+# Prompt content. Edit `vault/90-meta/prompts/*.md` after bootstrap to tune
+# behavior — these are seeds, not the live source of truth at runtime.
+_ROUTER_PROMPT = """\
+<!-- Router prompt. Used by ghostbrain.worker.router for events that don't
+match a fast path-based rule. Output JSON validated against the schema in
+ghostbrain.worker.router.ROUTER_JSON_SCHEMA. -->
+
+You are a routing classifier for a personal knowledge system.
+
+Available contexts:
+
+- **sanlam**, **codeship**, **reducedrecipes**, **personal** — see
+  `routing.yaml` for routing rules and `20-contexts/<ctx>/_profile.md`
+  for what each context covers.
+
+Read the content below and decide which context it belongs to. Be
+conservative — if signals point in multiple directions or the content is
+generic developer chatter, return `needs_review`.
+
+Output **ONLY** a single JSON object matching this shape:
+
+```json
+{
+  "context": "sanlam | codeship | reducedrecipes | personal | needs_review",
+  "confidence": 0.0,
+  "reasoning": "one sentence explaining the strongest signal",
+  "secondary_contexts": []
+}
+```
+
+Confidence guidance:
+- `>= 0.9` — explicit project name, repo URL, file path.
+- `0.7 - 0.9` — strong topical match but no naming proof.
+- `< 0.7` — weak / multi-context. Return `needs_review`.
+
+Content to classify:
+{{content}}
+"""
+
+_EXTRACTOR_PROMPT = """\
+<!-- Extractor prompt. Used by ghostbrain.worker.extractor on every Claude
+session note. Output is a JSON array; each item becomes its own artifact
+file under 20-contexts/<ctx>/claude/artifacts/<type>/. -->
+
+Read this Claude conversation excerpt and extract any of the following that
+are clearly present and durable. **Be conservative.** It is correct to
+return an empty array `[]` for short, exploratory, or chatty sessions.
+
+Extract:
+
+1. **spec** — formal specifications, requirements, design docs.
+2. **decision** — explicit decisions with stated reasoning.
+3. **code** — non-trivial code blocks (>20 lines) worth saving.
+4. **prompt** — prompts/templates that worked and could be reused.
+5. **unresolved** — open questions, blockers, "to figure out later".
+
+Do NOT extract: generic facts, questions answered inline, tool-call output,
+or text that was rewritten/discarded later in the session.
+
+Output **ONLY** a single JSON array (empty if nothing meaningful):
+
+```json
+[
+  {
+    "type": "spec | decision | code | prompt | unresolved",
+    "title": "concise title (max 12 words)",
+    "content": "the full content, markdown-formatted",
+    "tags": []
+  }
+]
+```
+
+Conversation excerpt:
+{{content}}
+"""
 
 # Files written verbatim if missing. Keyed by relative path under vault/.
 SEED_FILES: dict[str, str] = {
@@ -127,11 +204,18 @@ thresholds:
   reject_below: 0.50        # below this, drop the event
 
 llm:
-  model: claude-sonnet-4-6
-  router_model: claude-haiku-4-5-20251001  # cheap model for routing
+  # Aliases (`haiku`, `sonnet`, `opus`) are passed to `claude -p --model`.
+  router_model: haiku
+  extractor_model: sonnet
+  digest_model: sonnet
 
 worker:
   poll_interval_seconds: 5
+  # routing_mode: review_only | live
+  # review_only writes events to 00-inbox/raw only and audit-logs the
+  # routing decision; nothing lands under 20-contexts/<ctx>/. Flip to
+  # `live` after ~2 weeks of audit-log review.
+  routing_mode: review_only
 
 profile:
   # Roots scanned by `ghostbrain-claude-md --all`. Each direct child that looks
@@ -141,8 +225,8 @@ profile:
     - ~/code
     - ~/development
 """,
-    "90-meta/prompts/router.md": "# Router prompt\n\nDefined in Phase 3 (SPEC §6.1).\n",
-    "90-meta/prompts/extractor.md": "# Extractor prompt\n\nDefined in Phase 3 (SPEC §6.2).\n",
+    "90-meta/prompts/router.md": _ROUTER_PROMPT,
+    "90-meta/prompts/extractor.md": _EXTRACTOR_PROMPT,
     "90-meta/prompts/profile-updater.md": "# Profile updater prompt\n\nDefined in Phase 6 (SPEC §6.3).\n",
     "90-meta/prompts/digest.md": "# Digest prompt\n\nDefined in Phase 5 (SPEC §6.4).\n",
     "90-meta/prompts/classifier.md": "# Classifier prompt\n\nUsed for fine-grained classification. Defined later.\n",
