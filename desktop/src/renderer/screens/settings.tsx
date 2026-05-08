@@ -21,34 +21,16 @@ const SECTIONS: Array<{ id: SectionId; label: string; icon: string }> = [
   { id: 'about', label: 'about', icon: 'info' },
 ];
 
+const selectClass =
+  'cursor-pointer rounded-sm border border-hairline-2 bg-vellum px-[10px] py-[6px] font-mono text-11 text-ink-0';
+
 export function SettingsScreen() {
   const [section, setSection] = useState<SectionId>('display');
   return (
-    <div
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        background: 'var(--bg-paper)',
-      }}
-    >
+    <div className="flex flex-1 flex-col overflow-hidden bg-paper">
       <TopBar title="settings" subtitle="ghostbrain v 0.1.0" />
-      <div
-        style={{
-          flex: 1,
-          display: 'grid',
-          gridTemplateColumns: '200px 1fr',
-          overflow: 'hidden',
-        }}
-      >
-        <nav
-          style={{
-            borderRight: '1px solid var(--hairline)',
-            padding: '16px 8px',
-            overflowY: 'auto',
-          }}
-        >
+      <div className="grid flex-1 grid-cols-[200px_1fr] overflow-hidden">
+        <nav className="overflow-y-auto border-r border-hairline px-2 py-4">
           {SECTIONS.map((s) => (
             <SectionRow
               key={s.id}
@@ -58,7 +40,7 @@ export function SettingsScreen() {
             />
           ))}
         </nav>
-        <div style={{ overflowY: 'auto', padding: '24px 32px', maxWidth: 720 }}>
+        <div className="max-w-[720px] overflow-y-auto px-8 py-6">
           {section === 'display' && <DisplaySettings />}
           {section === 'vault' && <VaultSettings />}
           {section === 'privacy' && <PrivacySettings />}
@@ -139,7 +121,7 @@ function VaultSettings() {
         label="folder structure"
         sub="how ghostbrain organizes captured items"
         control={
-          <select style={selectStyle} onChange={() => stub(3)}>
+          <select className={selectClass} onChange={() => stub(3)}>
             <option>by source</option>
             <option>by date</option>
             <option>by person</option>
@@ -191,7 +173,7 @@ function PrivacySettings() {
         label="LLM provider"
         sub="for transcript summarization & query"
         control={
-          <select style={selectStyle} onChange={() => stub(3)}>
+          <select className={selectClass} onChange={() => stub(3)}>
             <option>local (ollama)</option>
             <option>anthropic</option>
             <option>openai</option>
@@ -225,7 +207,7 @@ function MeetingSettings() {
         label="audio retention"
         sub="how long to keep raw audio after transcription"
         control={
-          <select style={selectStyle} onChange={() => stub(3)}>
+          <select className={selectClass} onChange={() => stub(3)}>
             <option>30 days</option>
             <option>7 days</option>
             <option>delete immediately</option>
@@ -237,7 +219,7 @@ function MeetingSettings() {
         label="transcript model"
         sub="whisper · runs locally"
         control={
-          <select style={selectStyle} onChange={() => stub(3)}>
+          <select className={selectClass} onChange={() => stub(3)}>
             <option>whisper-large-v3</option>
             <option>whisper-medium</option>
           </select>
@@ -259,17 +241,7 @@ function HotkeySettings() {
           key={h.label}
           label={h.label}
           control={
-            <kbd
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 11,
-                padding: '4px 10px',
-                borderRadius: 4,
-                background: 'var(--bg-vellum)',
-                border: '1px solid var(--hairline-2)',
-                color: 'var(--ink-0)',
-              }}
-            >
+            <kbd className="rounded-sm border border-hairline-2 bg-vellum px-[10px] py-1 font-mono text-11 text-ink-0">
               {formatShortcut(h.shortcut)}
             </kbd>
           }
@@ -283,45 +255,13 @@ function AccountSettings() {
   return (
     <div>
       <SectionHeader title="account" sub="theo · ghostbrain pro" />
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          padding: 16,
-          background: 'var(--bg-vellum)',
-          border: '1px solid var(--hairline)',
-          borderRadius: 10,
-          marginBottom: 16,
-        }}
-      >
-        <div
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: '50%',
-            background: 'var(--neon)',
-            color: '#0E0F12',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 18,
-            fontWeight: 600,
-          }}
-        >
+      <div className="mb-4 flex items-center gap-[14px] rounded-r10 border border-hairline bg-vellum p-4">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neon text-18 font-semibold text-[#0E0F12]">
           T
         </div>
-        <div style={{ flex: 1, lineHeight: 1.3 }}>
-          <div style={{ fontSize: 14, color: 'var(--ink-0)', fontWeight: 500 }}>theo</div>
-          <div
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              color: 'var(--ink-2)',
-            }}
-          >
-            theo@ghostbrain.app
-          </div>
+        <div className="flex-1 leading-[1.3]">
+          <div className="text-14 font-medium text-ink-0">theo</div>
+          <div className="font-mono text-11 text-ink-2">theo@ghostbrain.app</div>
         </div>
         <Pill tone="neon">pro</Pill>
       </div>
@@ -359,48 +299,16 @@ function AboutSettings() {
   return (
     <div>
       <SectionHeader title="about" />
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 18,
-          padding: 24,
-          background: 'var(--bg-vellum)',
-          border: '1px solid var(--hairline)',
-          borderRadius: 12,
-        }}
-      >
+      <div className="flex items-center gap-[18px] rounded-lg border border-hairline bg-vellum p-6">
         <Ghost size={56} floating />
-        <div style={{ lineHeight: 1.4 }}>
-          <div
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 22,
-              fontWeight: 600,
-              color: 'var(--ink-0)',
-              letterSpacing: '-0.02em',
-            }}
-          >
+        <div className="leading-[1.4]">
+          <div className="font-display text-22 font-semibold tracking-tight-xx text-ink-0">
             ghostbrain
           </div>
-          <div
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              color: 'var(--ink-2)',
-            }}
-          >
+          <div className="font-mono text-11 text-ink-2">
             0.1.0 · build {new Date().toISOString().slice(0, 10)} · {window.gb.platform}
           </div>
-          <div
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontStyle: 'italic',
-              fontSize: 14,
-              color: 'var(--ink-1)',
-              marginTop: 8,
-            }}
-          >
+          <div className="mt-2 font-display text-14 italic text-ink-1">
             &ldquo;a friendly poltergeist on your shoulder.&rdquo;
           </div>
         </div>
@@ -419,29 +327,11 @@ function SettingRow({
   control: React.ReactNode;
 }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
-        padding: '14px 0',
-        borderBottom: '1px solid var(--hairline)',
-      }}
-    >
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, color: 'var(--ink-0)', fontWeight: 500 }}>{label}</div>
+    <div className="gb-setting-row flex items-center gap-4 border-b border-hairline py-[14px]">
+      <div className="flex-1">
+        <div className="text-13 font-medium text-ink-0">{label}</div>
         {sub && (
-          <div
-            style={{
-              fontSize: 11,
-              color: 'var(--ink-2)',
-              marginTop: 2,
-              lineHeight: 1.4,
-              wordBreak: 'break-all',
-            }}
-          >
-            {sub}
-          </div>
+          <div className="mt-[2px] break-all text-11 leading-[1.4] text-ink-2">{sub}</div>
         )}
       </div>
       <div>{control}</div>
@@ -451,20 +341,11 @@ function SettingRow({
 
 function SectionHeader({ title, sub }: { title: string; sub?: string }) {
   return (
-    <header style={{ marginBottom: 16 }}>
-      <h2
-        style={{
-          margin: 0,
-          fontFamily: 'var(--font-display)',
-          fontSize: 26,
-          fontWeight: 600,
-          color: 'var(--ink-0)',
-          letterSpacing: '-0.025em',
-        }}
-      >
+    <header className="mb-4">
+      <h2 className="m-0 font-display text-26 font-semibold tracking-tight-x text-ink-0">
         {title}
       </h2>
-      {sub && <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--ink-2)' }}>{sub}</p>}
+      {sub && <p className="mt-1 text-13 text-ink-2">{sub}</p>}
     </header>
   );
 }
@@ -483,26 +364,18 @@ function SectionRow({
   onClick: () => void;
 }) {
   return (
-    <div
+    <button
       key={id}
+      type="button"
       onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '8px 10px',
-        borderRadius: 6,
-        cursor: 'pointer',
-        background: active ? 'var(--bg-vellum)' : 'transparent',
-        fontSize: 13,
-        color: active ? 'var(--ink-0)' : 'var(--ink-1)',
-        fontWeight: active ? 500 : 400,
-        marginBottom: 2,
-      }}
+      aria-pressed={active}
+      className={`mb-[2px] flex w-full cursor-pointer items-center gap-[10px] rounded-r6 px-[10px] py-2 text-left text-13 ${
+        active ? 'bg-vellum font-medium text-ink-0' : 'bg-transparent font-normal text-ink-1'
+      }`}
     >
       <Lucide name={icon} size={14} color={active ? 'var(--neon)' : 'var(--ink-2)'} />
       {label}
-    </div>
+    </button>
   );
 }
 
@@ -516,44 +389,23 @@ function Segmented<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div
-      style={{
-        display: 'inline-flex',
-        padding: 2,
-        borderRadius: 6,
-        background: 'var(--bg-vellum)',
-        border: '1px solid var(--hairline-2)',
-      }}
-    >
-      {options.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onChange(o.value)}
-          style={{
-            padding: '6px 12px',
-            borderRadius: 4,
-            border: 'none',
-            cursor: 'pointer',
-            background: value === o.value ? 'rgba(197,255,61,0.16)' : 'transparent',
-            color: value === o.value ? 'var(--neon)' : 'var(--ink-1)',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 11,
-          }}
-        >
-          {o.label}
-        </button>
-      ))}
+    <div className="inline-flex rounded-r6 border border-hairline-2 bg-vellum p-[2px]">
+      {options.map((o) => {
+        const selected = value === o.value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => onChange(o.value)}
+            aria-pressed={selected}
+            className={`cursor-pointer rounded-sm border-0 px-3 py-[6px] font-mono text-11 ${
+              selected ? 'bg-neon/15 text-neon' : 'bg-transparent text-ink-1'
+            }`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
-
-const selectStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: 11,
-  padding: '6px 10px',
-  borderRadius: 4,
-  background: 'var(--bg-vellum)',
-  color: 'var(--ink-0)',
-  border: '1px solid var(--hairline-2)',
-  cursor: 'pointer',
-};

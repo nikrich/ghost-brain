@@ -3,8 +3,6 @@ interface Props {
   color?: string;
   floating?: boolean;
   className?: string;
-  // style?: transitional — call sites migrate in B.2.b–f and this prop is dropped in B.2.f
-  style?: React.CSSProperties;
 }
 
 export function Ghost({ size = 22, color = 'var(--neon)', floating = false, className = '' }: Props) {

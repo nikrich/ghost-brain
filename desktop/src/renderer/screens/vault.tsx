@@ -10,43 +10,14 @@ export function VaultScreen() {
     window.gb.shell.openPath(vaultPath);
   };
   return (
-    <div
-      style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-paper)' }}
-    >
+    <div className="flex flex-1 flex-col bg-paper">
       <TopBar title="vault" subtitle="opens in your file manager" />
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 18,
-          padding: 48,
-        }}
-      >
+      <div className="flex flex-1 flex-col items-center justify-center gap-[18px] p-12">
         <Ghost size={72} floating />
-        <h2
-          style={{
-            margin: 0,
-            fontFamily: 'var(--font-display)',
-            fontSize: 28,
-            fontWeight: 600,
-            letterSpacing: '-0.025em',
-            color: 'var(--ink-0)',
-          }}
-        >
+        <h2 className="m-0 font-display text-28 font-semibold tracking-tight-x text-ink-0">
           your vault is on disk.
         </h2>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 14,
-            color: 'var(--ink-2)',
-            textAlign: 'center',
-            maxWidth: 380,
-          }}
-        >
+        <p className="m-0 max-w-[380px] text-center text-14 text-ink-2">
           ghostbrain doesn&rsquo;t replace your editor — it feeds the vault. open it to see
           everything as markdown.
         </p>
@@ -58,9 +29,7 @@ export function VaultScreen() {
         >
           open vault folder
         </Btn>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-3)' }}>
-          {vaultPath}
-        </span>
+        <span className="font-mono text-11 text-ink-3">{vaultPath}</span>
       </div>
     </div>
   );

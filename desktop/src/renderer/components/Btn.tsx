@@ -12,8 +12,6 @@ interface Props {
   disabled?: boolean;
   type?: 'button' | 'submit';
   ariaLabel?: string;
-  // style?: transitional — call sites migrate in B.2.b–f and this prop is dropped in B.2.f
-  style?: React.CSSProperties;
 }
 
 const sizeClasses: Record<Size, string> = {

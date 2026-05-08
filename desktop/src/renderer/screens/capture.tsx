@@ -10,17 +10,12 @@ import { stub } from '../stores/toast';
 
 const SOURCES = ['gmail', 'slack', 'notion', 'linear', 'calendar', 'github'];
 
-function chipStyle(active: boolean): React.CSSProperties {
-  return {
-    fontFamily: 'var(--font-mono)',
-    fontSize: 11,
-    padding: '4px 10px',
-    borderRadius: 4,
-    background: active ? 'rgba(197,255,61,0.16)' : 'transparent',
-    color: active ? 'var(--neon)' : 'var(--ink-1)',
-    border: `1px solid ${active ? 'rgba(197,255,61,0.30)' : 'var(--hairline-2)'}`,
-    cursor: 'pointer',
-  };
+function chipClass(active: boolean): string {
+  return `cursor-pointer rounded-sm border px-[10px] py-1 font-mono text-11 ${
+    active
+      ? 'border-neon/30 bg-neon/15 text-neon'
+      : 'border-hairline-2 bg-transparent text-ink-1'
+  }`;
 }
 
 export function CaptureScreen() {
@@ -31,20 +26,12 @@ export function CaptureScreen() {
   const unread = CAPTURE_ITEMS.filter((c) => c.unread).length;
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        background: 'var(--bg-paper)',
-      }}
-    >
+    <div className="flex flex-1 flex-col overflow-hidden bg-paper">
       <TopBar
         title="capture"
         subtitle={`${unread} unread · ${CAPTURE_ITEMS.length} today`}
         right={
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="flex gap-2">
             <Btn
               variant="ghost"
               size="sm"
@@ -66,46 +53,25 @@ export function CaptureScreen() {
       />
 
       {/* source filter strip */}
-      <div
-        style={{
-          padding: '12px 24px',
-          borderBottom: '1px solid var(--hairline)',
-          display: 'flex',
-          gap: 6,
-          alignItems: 'center',
-          flexShrink: 0,
-        }}
-      >
-        <button onClick={() => setFilter('all')} style={chipStyle(filter === 'all')}>
+      <div className="flex flex-shrink-0 items-center gap-[6px] border-b border-hairline px-6 py-3">
+        <button onClick={() => setFilter('all')} className={chipClass(filter === 'all')}>
           all
         </button>
         {SOURCES.map((s) => (
-          <button key={s} onClick={() => setFilter(s)} style={chipStyle(filter === s)}>
+          <button key={s} onClick={() => setFilter(s)} className={chipClass(filter === s)}>
             <img
               src={`/assets/connectors/${s}.svg`}
               alt=""
-              style={{
-                width: 11,
-                height: 11,
-                marginRight: 4,
-                verticalAlign: -1,
-              }}
+              className="mr-1 inline-block h-[11px] w-[11px] align-[-1px]"
             />
             {s}
           </button>
         ))}
       </div>
 
-      <div
-        style={{
-          flex: 1,
-          display: 'grid',
-          gridTemplateColumns: '1fr 480px',
-          overflow: 'hidden',
-        }}
-      >
+      <div className="grid flex-1 grid-cols-[1fr_480px] overflow-hidden">
         {/* List */}
-        <div style={{ overflowY: 'auto', padding: '12px 8px' }}>
+        <div className="overflow-y-auto px-2 py-3">
           {filtered.map((c) => (
             <CaptureRow
               key={c.id}
@@ -131,79 +97,42 @@ interface CaptureRowProps {
 
 function CaptureRow({ c, selected, onClick }: CaptureRowProps) {
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '20px 14px 1fr auto',
-        gap: 10,
-        alignItems: 'center',
-        padding: '10px 14px',
-        borderRadius: 6,
-        cursor: 'pointer',
-        marginBottom: 2,
-        background: selected ? 'var(--bg-vellum)' : 'transparent',
-        borderLeft: selected ? '2px solid var(--neon)' : '2px solid transparent',
-      }}
+      className={`mb-[2px] grid w-full cursor-pointer grid-cols-[20px_14px_1fr_auto] items-center gap-[10px] rounded-r6 border-l-2 px-[14px] py-[10px] text-left ${
+        selected ? 'border-l-neon bg-vellum' : 'border-l-transparent bg-transparent'
+      }`}
     >
       <span
-        style={{
-          width: 6,
-          height: 6,
-          borderRadius: '50%',
-          background: c.unread ? 'var(--neon)' : 'transparent',
-          justifySelf: 'center',
-        }}
+        className={`h-[6px] w-[6px] justify-self-center rounded-full ${
+          c.unread ? 'bg-neon' : 'bg-transparent'
+        }`}
       />
-      <img src={`/assets/connectors/${c.source}.svg`} alt="" style={{ width: 13, height: 13 }} />
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+      <img src={`/assets/connectors/${c.source}.svg`} alt="" className="h-[13px] w-[13px]" />
+      <div className="min-w-0">
+        <div className="flex items-baseline gap-2">
           <span
-            style={{
-              fontSize: 13,
-              color: 'var(--ink-0)',
-              fontWeight: c.unread ? 500 : 400,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
+            className={`overflow-hidden text-ellipsis whitespace-nowrap text-13 text-ink-0 ${
+              c.unread ? 'font-medium' : 'font-normal'
+            }`}
           >
             {c.title}
           </span>
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 9,
-              color: 'var(--ink-3)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {c.from}
-          </span>
+          <span className="whitespace-nowrap font-mono text-9 text-ink-3">{c.from}</span>
         </div>
-        <div
-          style={{
-            fontSize: 11,
-            color: 'var(--ink-2)',
-            marginTop: 2,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-          }}
-        >
+        <div className="mt-[2px] overflow-hidden text-ellipsis whitespace-nowrap font-display text-11 italic text-ink-2">
           {c.snippet}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 4 }}>
+      <div className="flex gap-1">
         {c.tags.slice(0, 1).map((t) => (
           <Pill key={t} tone="outline">
             {t}
           </Pill>
         ))}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -213,33 +142,13 @@ interface CaptureDetailProps {
 
 function CaptureDetail({ c }: CaptureDetailProps) {
   return (
-    <aside
-      style={{
-        borderLeft: '1px solid var(--hairline)',
-        background: 'var(--bg-vellum)',
-        overflowY: 'auto',
-        padding: 24,
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          marginBottom: 14,
-        }}
-      >
-        <img src={`/assets/connectors/${c.source}.svg`} alt="" style={{ width: 18, height: 18 }} />
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 11,
-            color: 'var(--ink-2)',
-          }}
-        >
+    <aside className="overflow-y-auto border-l border-hairline bg-vellum p-6">
+      <div className="mb-[14px] flex items-center gap-[10px]">
+        <img src={`/assets/connectors/${c.source}.svg`} alt="" className="h-[18px] w-[18px]" />
+        <span className="font-mono text-11 text-ink-2">
           {c.source} · {c.from}
         </span>
-        <div style={{ flex: 1 }} />
+        <div className="flex-1" />
         <Btn
           variant="ghost"
           size="sm"
@@ -253,79 +162,31 @@ function CaptureDetail({ c }: CaptureDetailProps) {
           onClick={() => stub(3)}
         />
       </div>
-      <h3
-        style={{
-          margin: 0,
-          fontFamily: 'var(--font-display)',
-          fontSize: 22,
-          fontWeight: 600,
-          color: 'var(--ink-0)',
-          letterSpacing: '-0.025em',
-          lineHeight: 1.15,
-        }}
-      >
+      <h3 className="m-0 font-display text-22 font-semibold leading-[1.15] tracking-tight-x text-ink-0">
         {c.title}
       </h3>
-      <p
-        style={{
-          marginTop: 14,
-          fontFamily: 'var(--font-display)',
-          fontStyle: 'italic',
-          fontSize: 16,
-          color: 'var(--ink-0)',
-          lineHeight: 1.55,
-        }}
-      >
+      <p className="mt-[14px] font-display text-16 italic leading-[1.55] text-ink-0">
         &ldquo;{c.snippet}&rdquo;
       </p>
 
-      <div style={{ marginTop: 24 }}>
-        <Eyebrow style={{ marginBottom: 10 }}>ghostbrain extracted</Eyebrow>
-        <div
-          style={{
-            background: 'var(--bg-paper)',
-            border: '1px solid var(--hairline)',
-            borderRadius: 8,
-            padding: 14,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 10,
-          }}
-        >
+      <div className="mt-6">
+        <Eyebrow className="mb-[10px]">ghostbrain extracted</Eyebrow>
+        <div className="flex flex-col gap-[10px] rounded-md border border-hairline bg-paper p-[14px]">
           <Catch icon="check-square" text="action: ping mira about thursday" />
           <Catch icon="link" text="ref: design crit · onboarding v3" />
           <Catch icon="user" text="people: theo, mira" />
         </div>
       </div>
 
-      <div style={{ marginTop: 20 }}>
-        <Eyebrow style={{ marginBottom: 10 }}>destination</Eyebrow>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '10px 12px',
-            background: 'var(--bg-paper)',
-            border: '1px solid var(--hairline)',
-            borderRadius: 6,
-          }}
-        >
+      <div className="mt-5">
+        <Eyebrow className="mb-[10px]">destination</Eyebrow>
+        <div className="flex items-center gap-[10px] rounded-r6 border border-hairline bg-paper px-3 py-[10px]">
           <Lucide name="folder" size={13} color="var(--ink-2)" />
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              color: 'var(--ink-0)',
-              flex: 1,
-            }}
-          >
-            ~/brain/Daily/2026-05-08.md
-          </span>
+          <span className="flex-1 font-mono text-11 text-ink-0">~/brain/Daily/2026-05-08.md</span>
         </div>
       </div>
 
-      <div style={{ marginTop: 24, display: 'flex', gap: 8 }}>
+      <div className="mt-6 flex gap-2">
         <Btn
           variant="primary"
           size="sm"
