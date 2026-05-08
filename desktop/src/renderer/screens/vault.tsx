@@ -3,11 +3,15 @@ import { Btn } from '../components/Btn';
 import { Lucide } from '../components/Lucide';
 import { Ghost } from '../components/Ghost';
 import { useSettings } from '../stores/settings';
+import { useToasts } from '../stores/toast';
 
 export function VaultScreen() {
   const vaultPath = useSettings((s) => s.vaultPath);
-  const onOpen = () => {
-    window.gb.shell.openPath(vaultPath);
+  const onOpen = async () => {
+    const result = await window.gb.shell.openPath(vaultPath);
+    if (!result.ok) {
+      useToasts.getState().push(result.error);
+    }
   };
   return (
     <div className="flex flex-1 flex-col bg-paper">

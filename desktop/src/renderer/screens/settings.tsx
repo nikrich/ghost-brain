@@ -5,13 +5,24 @@ import { Lucide } from '../components/Lucide';
 import { Toggle } from '../components/Toggle';
 import { Ghost } from '../components/Ghost';
 import { useSettings } from '../stores/settings';
+import { useToasts } from '../stores/toast';
 import { HOTKEYS, format as formatShortcut } from '../lib/shortcuts';
 import type {
   FolderStructure,
   LlmProvider,
   AudioRetention,
   TranscriptModel,
+  Settings,
 } from '../../shared/types';
+
+async function trySet<K extends keyof Settings>(
+  setSetting: (k: K, v: Settings[K]) => Promise<{ ok: true } | { ok: false; error: string }>,
+  key: K,
+  value: Settings[K],
+) {
+  const r = await setSetting(key, value);
+  if (!r.ok) useToasts.getState().push(r.error);
+}
 
 type SectionId = 'display' | 'vault' | 'privacy' | 'meeting' | 'hotkeys' | 'account' | 'about';
 
@@ -75,7 +86,7 @@ function DisplaySettings() {
               { value: 'dark', label: 'dark' },
               { value: 'light', label: 'light' },
             ]}
-            onChange={(v) => void setSetting('theme', v)}
+            onChange={(v) => void trySet(setSetting, 'theme', v)}
           />
         }
       />
@@ -89,7 +100,7 @@ function DisplaySettings() {
               { value: 'comfortable', label: 'comfy' },
               { value: 'compact', label: 'compact' },
             ]}
-            onChange={(v) => void setSetting('density', v)}
+            onChange={(v) => void trySet(setSetting, 'density', v)}
           />
         }
       />
@@ -132,7 +143,7 @@ function VaultSettings() {
           <select
             className={selectClass}
             value={folderStructure}
-            onChange={(e) => void setSetting('folderStructure', e.target.value as FolderStructure)}
+            onChange={(e) => void trySet(setSetting, 'folderStructure', e.target.value as FolderStructure)}
           >
             <option value="by-source">by source</option>
             <option value="by-date">by date</option>
@@ -144,7 +155,7 @@ function VaultSettings() {
         label="daily note"
         sub="capture digest appended to today's daily note"
         control={
-          <Toggle on={dailyNoteEnabled} onChange={(v) => void setSetting('dailyNoteEnabled', v)} />
+          <Toggle on={dailyNoteEnabled} onChange={(v) => void trySet(setSetting, 'dailyNoteEnabled', v)} />
         }
       />
       <SettingRow
@@ -153,7 +164,7 @@ function VaultSettings() {
         control={
           <Toggle
             on={markdownFrontmatter}
-            onChange={(v) => void setSetting('markdownFrontmatter', v)}
+            onChange={(v) => void trySet(setSetting, 'markdownFrontmatter', v)}
           />
         }
       />
@@ -161,7 +172,7 @@ function VaultSettings() {
         label="auto-link mentions"
         sub="turn @names and #tags into [[wikilinks]]"
         control={
-          <Toggle on={autoLinkMentions} onChange={(v) => void setSetting('autoLinkMentions', v)} />
+          <Toggle on={autoLinkMentions} onChange={(v) => void trySet(setSetting, 'autoLinkMentions', v)} />
         }
       />
     </div>
@@ -183,19 +194,19 @@ function PrivacySettings() {
       <SettingRow
         label="cloud sync"
         sub="opt-in. encrypted at rest. you hold the key."
-        control={<Toggle on={cloudSync} onChange={(v) => void setSetting('cloudSync', v)} />}
+        control={<Toggle on={cloudSync} onChange={(v) => void trySet(setSetting, 'cloudSync', v)} />}
       />
       <SettingRow
         label="end-to-end encryption"
         sub="vault encrypted on disk with your passphrase"
         control={
-          <Toggle on={e2eEncryption} onChange={(v) => void setSetting('e2eEncryption', v)} />
+          <Toggle on={e2eEncryption} onChange={(v) => void trySet(setSetting, 'e2eEncryption', v)} />
         }
       />
       <SettingRow
         label="telemetry"
         sub="anonymous crash reports. no message contents, ever."
-        control={<Toggle on={telemetry} onChange={(v) => void setSetting('telemetry', v)} />}
+        control={<Toggle on={telemetry} onChange={(v) => void trySet(setSetting, 'telemetry', v)} />}
       />
       <SettingRow
         label="LLM provider"
@@ -204,7 +215,7 @@ function PrivacySettings() {
           <select
             className={selectClass}
             value={llmProvider}
-            onChange={(e) => void setSetting('llmProvider', e.target.value as LlmProvider)}
+            onChange={(e) => void trySet(setSetting, 'llmProvider', e.target.value as LlmProvider)}
           >
             <option value="local">local (ollama)</option>
             <option value="anthropic">anthropic</option>
@@ -232,19 +243,19 @@ function MeetingSettings() {
         control={
           <Toggle
             on={autoRecord}
-            onChange={(v) => void setSetting('autoRecordFromCalendar', v)}
+            onChange={(v) => void trySet(setSetting, 'autoRecordFromCalendar', v)}
           />
         }
       />
       <SettingRow
         label="diarize speakers"
         sub="separate who-said-what in the transcript"
-        control={<Toggle on={diarize} onChange={(v) => void setSetting('diarizeSpeakers', v)} />}
+        control={<Toggle on={diarize} onChange={(v) => void trySet(setSetting, 'diarizeSpeakers', v)} />}
       />
       <SettingRow
         label="extract action items"
         sub="ghostbrain pulls todos automatically"
-        control={<Toggle on={extract} onChange={(v) => void setSetting('extractActionItems', v)} />}
+        control={<Toggle on={extract} onChange={(v) => void trySet(setSetting, 'extractActionItems', v)} />}
       />
       <SettingRow
         label="audio retention"
@@ -253,7 +264,7 @@ function MeetingSettings() {
           <select
             className={selectClass}
             value={retention}
-            onChange={(e) => void setSetting('audioRetention', e.target.value as AudioRetention)}
+            onChange={(e) => void trySet(setSetting, 'audioRetention', e.target.value as AudioRetention)}
           >
             <option value="30d">30 days</option>
             <option value="7d">7 days</option>
@@ -269,7 +280,7 @@ function MeetingSettings() {
           <select
             className={selectClass}
             value={model}
-            onChange={(e) => void setSetting('transcriptModel', e.target.value as TranscriptModel)}
+            onChange={(e) => void trySet(setSetting, 'transcriptModel', e.target.value as TranscriptModel)}
           >
             <option value="whisper-large-v3">whisper-large-v3</option>
             <option value="whisper-medium">whisper-medium</option>

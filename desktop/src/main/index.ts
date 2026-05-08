@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { join } from 'node:path';
 import * as settings from './settings';
 import { pickVaultFolder } from './dialogs';
+import { settingsSchema } from '../shared/settings-schema';
 import type { Settings } from '../shared/types';
 
 function createWindow() {
@@ -30,12 +31,35 @@ function createWindow() {
 }
 
 ipcMain.handle('gb:settings:getAll', () => settings.getAll());
-ipcMain.handle('gb:settings:set', (_e, key: keyof Settings, value: Settings[keyof Settings]) => {
-  settings.setKey(key, value as never);
+
+ipcMain.handle('gb:settings:set', (_e, key: unknown, value: unknown) => {
+  if (typeof key !== 'string' || !(key in settingsSchema.shape)) {
+    return { ok: false, error: `Unknown setting: ${String(key)}` };
+  }
+  const fieldSchema = settingsSchema.shape[key as keyof typeof settingsSchema.shape];
+  const parsed = fieldSchema.safeParse(value);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0]?.message ?? 'validation failed';
+    return { ok: false, error: `Invalid value for ${key}: ${issue}` };
+  }
+  settings.setKey(key as keyof Settings, parsed.data as Settings[keyof Settings]);
   return { ok: true };
 });
+
 ipcMain.handle('gb:dialogs:pickVaultFolder', () => pickVaultFolder());
-ipcMain.handle('gb:shell:openPath', async (_e, p: string) => {
+
+ipcMain.handle('gb:shell:openPath', async (_e, p: unknown) => {
+  if (typeof p !== 'string') {
+    return { ok: false, error: 'openPath: path must be a string' };
+  }
+  const vaultPath = settings.getAll().vaultPath;
+  // Allow opening the configured vault path itself or any path under it.
+  // Reject anything else to prevent the renderer from opening arbitrary paths.
+  const normalized = p.replace(/\\/g, '/');
+  const allowed = vaultPath.replace(/\\/g, '/');
+  if (normalized !== allowed && !normalized.startsWith(allowed + '/')) {
+    return { ok: false, error: 'openPath: only the vault path is allowed' };
+  }
   await shell.openPath(p);
   return { ok: true };
 });
