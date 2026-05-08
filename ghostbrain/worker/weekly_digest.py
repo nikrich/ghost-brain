@@ -81,6 +81,7 @@ class WeeklyDigestInput:
     artifacts: list[WeeklyArtifact]
     stale_items: list[Any] = dataclasses.field(default_factory=list)
     checkins: list[Any] = dataclasses.field(default_factory=list)
+    inverse_refs: list[Any] = dataclasses.field(default_factory=list)  # UnexpectedReference
     quiet_contexts: list[str] = dataclasses.field(default_factory=list)
     activity_by_context: dict[str, int] = dataclasses.field(default_factory=dict)
     activity_by_source: dict[str, int] = dataclasses.field(default_factory=dict)
@@ -109,6 +110,7 @@ def build_weekly_input(week_end_date: date) -> WeeklyDigestInput:
     )
     quiet = _quiet_contexts(activity_by_context)
     stale_items, checkins = _load_metrics()
+    inverse_refs = _load_inverse_refs(lookback_days=7)
 
     return WeeklyDigestInput(
         week_start=week_start.isoformat(),
@@ -118,11 +120,23 @@ def build_weekly_input(week_end_date: date) -> WeeklyDigestInput:
         artifacts=artifacts,
         stale_items=stale_items,
         checkins=checkins,
+        inverse_refs=inverse_refs,
         quiet_contexts=quiet,
         activity_by_context=activity_by_context,
         activity_by_source=activity_by_source,
         total_events=total,
     )
+
+
+def _load_inverse_refs(lookback_days: int) -> list[Any]:
+    try:
+        from ghostbrain.metrics.inverse_search import find_unexpected_references
+    except ImportError:
+        return []
+    try:
+        return find_unexpected_references(lookback_days=lookback_days)
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def _load_daily_digests(
@@ -331,6 +345,23 @@ def render_weekly_input_for_prompt(d: WeeklyDigestInput) -> str:
                 f"  - {s.person} — {s.reason} (last activity "
                 f"{s.last_activity[:10]})"
             )
+        parts.append("")
+
+    if d.inverse_refs:
+        cross_only = [r for r in d.inverse_refs if r.is_cross_context]
+        same_ctx = [r for r in d.inverse_refs if not r.is_cross_context]
+        parts.append(
+            f"Unexpected references this week "
+            f"({len(cross_only)} cross-context, {len(same_ctx)} other):"
+        )
+        for r in (cross_only + same_ctx)[:15]:
+            link = _wikilink_for_path(r.note_path)
+            tag = "[CROSS]" if r.is_cross_context else f"[{r.note_context}]"
+            parts.append(
+                f"  {tag} {r.name_key} → {r.matched_phrase!r} in "
+                f"{r.note_title} → {link}"
+            )
+            parts.append(f"      excerpt: {r.excerpt[:160]}")
         parts.append("")
 
     if d.stale_items:

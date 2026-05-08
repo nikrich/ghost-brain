@@ -130,6 +130,46 @@ Conversation excerpt:
 {{content}}
 """
 
+_REVERSAL_CHECK_PROMPT = """\
+<!-- Reversal-check prompt. Used by ghostbrain.worker.reversal after a new
+decision artifact is written. -->
+
+RESPOND WITH JSON ONLY. NO PROSE. NO MARKDOWN FENCES. NO PREAMBLE.
+Your entire response must be a single JSON object exactly matching:
+`{"reversals": [{"contradicts_id": "...", "reasoning": "..."}, ...]}`
+Use `{"reversals": []}` when nothing contradicts — empty is the right
+answer most of the time.
+
+You're given a NEW decision and a list of EARLIER decisions from the
+same context. Identify only earlier decisions that the new one
+**directly reverses or contradicts**. Be conservative.
+
+A reversal looks like:
+- "do X" while earlier said "do not X" or "do Y instead of X" on the
+  same subject.
+- The new decision rescinds/abandons something previously committed.
+- A different option chosen from the same set as an earlier decision.
+
+A reversal does NOT look like:
+- Refinement or follow-on work that builds on the earlier decision.
+- Adjacent decisions on different subject matter.
+- Course-corrections that don't actually change the prior decision.
+- Any case where you'd need to invent justification.
+
+`reasoning` is one sentence quoting/paraphrasing the conflict.
+`contradicts_id` must match an ID from the candidates — never invent.
+
+NEW decision:
+title: {{new_title}}
+
+{{new_body}}
+
+EARLIER decisions in this context:
+
+{{candidates}}
+"""
+
+
 _GMAIL_RELEVANCE_PROMPT = """\
 <!-- Gmail relevance gate. Used by ghostbrain.connectors.gmail to decide
 whether a thread should be ingested into the vault. Anything the gate
@@ -237,6 +277,12 @@ days. Skip if nothing recurs.]
 
 [From "Check-in suggestions" only. "<name> -- last activity <date> --
 <reason>".]
+
+## Where you appear unexpectedly
+
+[From "Unexpected references this week" only. Group by name; lead
+with [CROSS] items. One bullet per reference, ending with the
+`[[wikilink]]`.]
 
 ## Quiet this week
 
@@ -410,6 +456,12 @@ with its `[[wikilink]]`. Skip section if empty.]
 [Render only when "Today's calendar" appears in input. List meetings
 chronologically: "HH:MM-HH:MM Title (context)" per bullet. Skip if no
 calendar data.]
+
+## Anticipated
+
+[Render only when "Anticipated absences" appears in input. One soft
+nudge bullet per absent context that's usually active on this
+weekday. Skip if empty.]
 
 ## <Context name>
 
@@ -632,6 +684,23 @@ profile:
     - ~/code
     - ~/development
 
+# Inverse search (Phase 13 strength feature). Surfaces unexpected
+# mentions of watched names in the weekly digest. Each entry is a
+# name key and the phrases the matcher should look for; optional
+# expected_contexts narrows where a mention is "expected" so cross-
+# context surfacings get flagged separately.
+inverse_search:
+  watched_names: {}
+  # Example:
+  #   jannik811:
+  #     - jannik
+  #     - jannik richter
+  #     - jr
+  expected_contexts: {}
+  # Example:
+  #   jannik811: [sanlam, codeship, personal]
+  lookback_days: 7
+
 # Autonomous meeting recorder (Phase 12). Watches Apple Calendar, records
 # eligible meetings via BlackHole + mic, transcribes with whisper.cpp,
 # links transcripts to calendar event notes.
@@ -650,6 +719,7 @@ recorder:
     "90-meta/prompts/extractor.md": _EXTRACTOR_PROMPT,
     "90-meta/prompts/transcript-extractor.md": _TRANSCRIPT_EXTRACTOR_PROMPT,
     "90-meta/prompts/gmail-relevance.md": _GMAIL_RELEVANCE_PROMPT,
+    "90-meta/prompts/reversal-check.md": _REVERSAL_CHECK_PROMPT,
     "90-meta/prompts/profile-updater.md": _PROFILE_UPDATER_PROMPT,
     "90-meta/prompts/digest.md": _DIGEST_PROMPT,
     "90-meta/prompts/weekly-digest.md": _WEEKLY_DIGEST_PROMPT,

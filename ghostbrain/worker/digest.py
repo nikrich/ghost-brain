@@ -109,6 +109,7 @@ class DigestInput:
     transcript_artifacts: list[TranscriptArtifact] = dataclasses.field(
         default_factory=list,
     )
+    anticipations: list[Any] = dataclasses.field(default_factory=list)  # Anticipation
 
     @property
     def review_queue_ids(self) -> list[str]:
@@ -147,6 +148,7 @@ def build_digest_input(target_date: date) -> DigestInput:
     stale_items, checkins = _load_metrics()
     transcripts = list(_load_recent_transcripts(summary_day))
     transcript_artifacts = list(_load_recent_transcript_artifacts(summary_day))
+    anticipations = _load_anticipations(target_date)
 
     return DigestInput(
         digest_date=target_date.isoformat(),
@@ -160,7 +162,19 @@ def build_digest_input(target_date: date) -> DigestInput:
         checkins=checkins,
         transcripts=transcripts,
         transcript_artifacts=transcript_artifacts,
+        anticipations=anticipations,
     )
+
+
+def _load_anticipations(target_date: date) -> list[Any]:
+    try:
+        from ghostbrain.metrics.anticipation import detect_anticipations
+    except ImportError:
+        return []
+    try:
+        return detect_anticipations(today=target_date)
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def _load_recent_transcript_artifacts(
@@ -324,6 +338,12 @@ def render_input_for_prompt(d: DigestInput) -> str:
             parts.append(
                 f"  [{t.context}] {t.title}{duration} → {link}{parent_link}"
             )
+        parts.append("")
+
+    if d.anticipations:
+        parts.append(f"Anticipated absences ({len(d.anticipations)}):")
+        for a in d.anticipations:
+            parts.append(f"  - {a.reason}")
         parts.append("")
 
     if d.transcript_artifacts:
