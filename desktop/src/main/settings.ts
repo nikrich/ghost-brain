@@ -2,7 +2,7 @@ import { app } from 'electron';
 import { existsSync, readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
-import type { Settings } from '../preload/types';
+import type { Settings } from '../shared/types';
 
 const SCHEMA_VERSION = 1;
 

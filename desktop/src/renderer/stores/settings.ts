@@ -1,10 +1,13 @@
 import { create } from 'zustand';
-import type { Settings } from '../../preload/types';
+import type { Settings } from '../../shared/types';
 
 interface SettingsState extends Settings {
   ready: boolean;
   hydrate: () => Promise<void>;
-  set: <K extends keyof Settings>(key: K, value: Settings[K]) => Promise<void>;
+  set: <K extends keyof Settings>(
+    key: K,
+    value: Settings[K],
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 export const useSettings = create<SettingsState>((set) => ({
@@ -17,7 +20,10 @@ export const useSettings = create<SettingsState>((set) => ({
     set({ ...all, ready: true });
   },
   set: async (key, value) => {
-    await window.gb.settings.set(key, value);
-    set({ [key]: value } as Pick<Settings, typeof key>);
+    const result = await window.gb.settings.set(key, value);
+    if (result.ok) {
+      set({ [key]: value } as Pick<Settings, typeof key>);
+    }
+    return result;
   },
 }));

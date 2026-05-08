@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { join } from 'node:path';
 import * as settings from './settings';
 import { pickVaultFolder } from './dialogs';
-import type { Settings } from '../preload/types';
+import type { Settings } from '../shared/types';
 
 function createWindow() {
   const isMac = process.platform === 'darwin';
@@ -32,9 +32,13 @@ function createWindow() {
 ipcMain.handle('gb:settings:getAll', () => settings.getAll());
 ipcMain.handle('gb:settings:set', (_e, key: keyof Settings, value: Settings[keyof Settings]) => {
   settings.setKey(key, value as never);
+  return { ok: true };
 });
 ipcMain.handle('gb:dialogs:pickVaultFolder', () => pickVaultFolder());
-ipcMain.handle('gb:shell:openPath', (_e, p: string) => shell.openPath(p));
+ipcMain.handle('gb:shell:openPath', async (_e, p: string) => {
+  await shell.openPath(p);
+  return { ok: true };
+});
 
 app.whenReady().then(createWindow);
 app.on('window-all-closed', () => {

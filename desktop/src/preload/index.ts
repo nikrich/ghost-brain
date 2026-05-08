@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { GbBridge, Settings } from './types';
+import type { GbBridge } from '../shared/types';
 
 const bridge: GbBridge = {
   settings: {
@@ -16,6 +16,3 @@ const bridge: GbBridge = {
 };
 
 contextBridge.exposeInMainWorld('gb', bridge);
-
-// Re-export so Settings stays referenced (required by tsc for noUnusedLocals).
-export type { Settings };
