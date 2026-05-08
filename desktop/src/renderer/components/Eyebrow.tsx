@@ -1,20 +1,12 @@
 interface Props {
   children: React.ReactNode;
-  style?: React.CSSProperties;
+  className?: string;
 }
 
-export function Eyebrow({ children, style }: Props) {
+export function Eyebrow({ children, className = '' }: Props) {
   return (
     <div
-      style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 10,
-        fontWeight: 500,
-        textTransform: 'uppercase',
-        letterSpacing: '0.14em',
-        color: 'var(--ink-2)',
-        ...style,
-      }}
+      className={`font-mono text-10 font-medium uppercase tracking-eyebrow-loose text-ink-2 ${className}`}
     >
       {children}
     </div>

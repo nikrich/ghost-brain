@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { GbBridge, Settings } from './types';
+import type { GbBridge } from '../shared/types';
 
 const bridge: GbBridge = {
   settings: {
@@ -13,9 +13,14 @@ const bridge: GbBridge = {
     openPath: (path: string) => ipcRenderer.invoke('gb:shell:openPath', path),
   },
   platform: process.platform,
+  on: (channel, listener) => {
+    const wrapped = () => listener();
+    const ipcChannel = `gb:${channel}`;
+    ipcRenderer.on(ipcChannel, wrapped);
+    return () => {
+      ipcRenderer.off(ipcChannel, wrapped);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld('gb', bridge);
-
-// Re-export so Settings stays referenced (required by tsc for noUnusedLocals).
-export type { Settings };

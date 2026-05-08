@@ -12,7 +12,7 @@
 
 @font-face {
   font-family: 'Google Sans Flex';
-  src: url('../../fonts/GoogleSansFlex-VariableFont_GRAD_ROND_opsz_slnt_wdth_wght.ttf')
+  src: url('/fonts/GoogleSansFlex-VariableFont_GRAD_ROND_opsz_slnt_wdth_wght.ttf')
     format('truetype-variations');
   font-weight: 100 1000;
   font-style: oblique -15deg 0deg;
@@ -20,6 +20,7 @@
 }
 
 @theme {
+  /* colors */
   --color-paper: var(--bg-paper);
   --color-vellum: var(--bg-vellum);
   --color-fog: var(--bg-fog);
@@ -31,20 +32,64 @@
   --color-neon-dark: var(--neon-dark);
   --color-neon-mist: var(--neon-mist);
   --color-oxblood: var(--oxblood);
+  --color-oxblood-dark: var(--oxblood-dark);
   --color-oxblood-mist: var(--oxblood-mist);
   --color-moss: var(--moss);
   --color-moss-mist: var(--moss-mist);
 
+  /* pill foregrounds — tonally-shifted accents, see colors_and_type.css */
+  --color-pill-moss-fg: var(--pill-moss-fg);
+  --color-pill-oxblood-fg: var(--pill-oxblood-fg);
+  --color-pill-water-fg: var(--pill-water-fg);
+
+  /* hairlines (semi-transparent dividers) */
+  --color-hairline: var(--hairline);
+  --color-hairline-2: var(--hairline-2);
+  --color-hairline-3: var(--hairline-3);
+
+  /* fonts */
   --font-display: 'Google Sans Flex', ui-sans-serif, system-ui, sans-serif;
   --font-body: 'Google Sans Flex', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  /* font sizes — design uses these specific values */
+  --text-9: 9px;
+  --text-10: 10px;
+  --text-11: 11px;
+  --text-12: 12px;
+  --text-13: 13px;
+  --text-14: 14px;
+  --text-16: 16px;
+  --text-18: 18px;
+  --text-20: 20px;
+  --text-22: 22px;
+  --text-26: 26px;
+  --text-28: 28px;
+  --text-32: 32px;
+  --text-38: 38px;
+  --text-72: 72px;
 
+  /* tracking (letter-spacing) */
+  --tracking-tightest: -0.035em;
+  --tracking-tighter: -0.03em;
+  --tracking-tight-x: -0.025em;
+  --tracking-tight-xx: -0.02em;
+  --tracking-eyebrow: 0.12em;
+  --tracking-eyebrow-loose: 0.14em;
+
+  /* radii */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-r6: 6px;
+  --radius-md: 8px;
+  --radius-r10: 10px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* shadows */
   --shadow-card: 0 2px 4px rgba(0, 0, 0, 0.3), 0 12px 24px rgba(0, 0, 0, 0.45);
   --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-glow-neon: 0 0 0 1px rgba(197, 255, 61, 0.35), 0 0 24px rgba(197, 255, 61, 0.25);
 }
 
 html,
@@ -58,6 +103,8 @@ body,
 
 body {
   font-family: var(--font-body);
+  /* intentional fixed color: pre-paint body bg, slightly darker than --bg-paper
+     so the BrowserWindow flash on first paint blends into the dark theme */
   background: #06070a;
   color: var(--ink-0);
   overflow: hidden;
@@ -65,6 +112,8 @@ body {
 }
 
 body[data-theme='light'] {
+  /* intentional fixed color: pre-paint body bg for light theme, slightly cooler
+     than --bg-paper to avoid a stark white flash before React mounts */
   background: #d8dbe0;
 }
 
@@ -143,3 +192,12 @@ body[data-theme='light'] {
   background-clip: padding-box;
   border: 2px solid transparent;
 }
+
+/* density: compact tightens vertical rhythm across key surfaces */
+[data-density='compact'] .gb-topbar { height: 48px; }
+[data-density='compact'] .gb-statusbar { height: 22px; }
+[data-density='compact'] .gb-navrow { padding-top: 4px; padding-bottom: 4px; }
+[data-density='compact'] .gb-sidenav { padding-top: 6px; padding-bottom: 6px; }
+[data-density='compact'] .gb-setting-row { padding-top: 10px; padding-bottom: 10px; }
+[data-density='compact'] .gb-panel-header { padding-top: 8px; padding-bottom: 8px; padding-left: 12px; padding-right: 12px; }
+[data-density='compact'] .gb-panel-body { padding: 8px; }

@@ -147,6 +147,18 @@ def _extract_transcript_artifacts(
         log.info("extracted %d artifact(s) from transcript %s",
                  len(paths), parent_note_path)
 
+    # Run reversal check on each newly-extracted decision. Best-effort.
+    try:
+        from ghostbrain.worker.reversal import check_for_reversals
+    except Exception as e:  # noqa: BLE001
+        log.warning("reversal import failed: %s", e)
+        return
+    for p in paths:
+        try:
+            check_for_reversals(p)
+        except Exception as e:  # noqa: BLE001
+            log.warning("reversal check failed for %s: %s", p, e)
+
 
 # ---------------------------------------------------------------------------
 # Internals

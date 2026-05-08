@@ -13,5 +13,6 @@
     "types": ["vite/client"],
     "outDir": "out/.tsbuildinfo-web"
   },
-  "include": ["src/renderer/**/*", "src/preload/types.ts"]
+  "references": [{ "path": "./tsconfig.shared.json" }],
+  "include": ["src/renderer/**/*", "src/shared/**/*"]
 }

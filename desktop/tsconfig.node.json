@@ -11,5 +11,6 @@
     "types": ["node"],
     "outDir": "out/.tsbuildinfo-node"
   },
-  "include": ["src/main/**/*", "src/preload/**/*", "electron.vite.config.ts"]
+  "references": [{ "path": "./tsconfig.shared.json" }],
+  "include": ["src/main/**/*", "src/preload/**/*", "src/shared/**/*", "electron.vite.config.ts"]
 }

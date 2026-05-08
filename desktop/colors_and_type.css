@@ -27,9 +27,17 @@
   --violet-dark:   #9CD420;
   --violet-mist:   #1F2A0A;
   --oxblood:       #FF6B5A;   /* destructive, errors */
+  --oxblood-dark:  #E8584C;   /* hovered/pressed oxblood */
   --oxblood-mist:  #2A1411;
   --moss:          #5C7C4F;   /* success, "connected" */
   --moss-mist:     #16201A;
+
+  /* ---------- color: pill foregrounds ----------------------------------- */
+  /* Tonally-shifted accent foregrounds for Pill component (lighter than the
+     base accent to read on a tinted backplate). */
+  --pill-moss-fg:    #A2C795;   /* foreground for moss pill */
+  --pill-oxblood-fg: #FF8A7C;   /* foreground for oxblood pill */
+  --pill-water-fg:   #7FB3D5;   /* foreground for "water" tone (cool blue) */
 
   /* ---------- borders & dividers (alpha on ink-0) ----------------------- */
   --hairline:      rgba(242, 243, 245, 0.08);
@@ -111,7 +119,12 @@
   --focus-ring: 0 0 0 2px var(--bg-paper), 0 0 0 4px var(--neon);
 }
 
-/* ----------------------- light mode (cool bone) --------------------------- */
+/* ----------------------- light mode (cool bone) ---------------------------
+   Note on theme-invariance: --neon, --neon-dark, --oxblood, --oxblood-dark,
+   --moss, --violet, --violet-dark intentionally stay at their :root values.
+   They are accent colors used as small fills, icon tints, and button bgs
+   (with intentional fixed dark-ink text, see Btn.tsx) — keeping them
+   identical across themes preserves the brand. ------------------------- */
 [data-theme="light"] {
   --bg-paper:   #F5F6F7;
   --bg-vellum:  #ECEEF1;
@@ -126,6 +139,14 @@
   --oxblood-mist:  #FCE8E5;
   --moss-mist:     #E2EEDC;
 
+  /* pill foregrounds — darker tonal shifts so the text reads on the
+     translucent accent fills the Pill component lays over a light bone
+     background (bg-moss/20, bg-oxblood/15). The :root variants are tuned
+     for dark mode and would wash out here. */
+  --pill-moss-fg:    #3F5C32;
+  --pill-oxblood-fg: #B33A2E;
+  --pill-water-fg:   #2E5C7A;
+
   --hairline:      rgba(14, 15, 18, 0.08);
   --hairline-2:    rgba(14, 15, 18, 0.14);
   --hairline-3:    rgba(14, 15, 18, 0.22);
@@ -133,6 +154,7 @@
   --shadow-sheet: 0 1px 0 rgba(14,15,18,0.04), 0 1px 2px rgba(14,15,18,0.06);
   --shadow-card:  0 2px 4px rgba(14,15,18,0.04), 0 8px 16px rgba(14,15,18,0.06);
   --shadow-float: 0 12px 32px rgba(14,15,18,0.10), 0 2px 6px rgba(14,15,18,0.06);
+  --shadow-inset: inset 0 1px 0 rgba(255,255,255,0.50), inset 0 -1px 0 rgba(14,15,18,0.06);
 }
 
 /* =========================================================================

@@ -27,6 +27,7 @@ TOP_LEVEL_DIRS: tuple[str, ...] = (
     "00-inbox/raw/confluence",
     "00-inbox/raw/calendar",
     "10-daily/by-context",
+    "10-daily/weekly",
     "30-cross-context/people",
     "30-cross-context/topics",
     "30-cross-context/decisions",
@@ -129,6 +130,46 @@ Conversation excerpt:
 {{content}}
 """
 
+_REVERSAL_CHECK_PROMPT = """\
+<!-- Reversal-check prompt. Used by ghostbrain.worker.reversal after a new
+decision artifact is written. -->
+
+RESPOND WITH JSON ONLY. NO PROSE. NO MARKDOWN FENCES. NO PREAMBLE.
+Your entire response must be a single JSON object exactly matching:
+`{"reversals": [{"contradicts_id": "...", "reasoning": "..."}, ...]}`
+Use `{"reversals": []}` when nothing contradicts — empty is the right
+answer most of the time.
+
+You're given a NEW decision and a list of EARLIER decisions from the
+same context. Identify only earlier decisions that the new one
+**directly reverses or contradicts**. Be conservative.
+
+A reversal looks like:
+- "do X" while earlier said "do not X" or "do Y instead of X" on the
+  same subject.
+- The new decision rescinds/abandons something previously committed.
+- A different option chosen from the same set as an earlier decision.
+
+A reversal does NOT look like:
+- Refinement or follow-on work that builds on the earlier decision.
+- Adjacent decisions on different subject matter.
+- Course-corrections that don't actually change the prior decision.
+- Any case where you'd need to invent justification.
+
+`reasoning` is one sentence quoting/paraphrasing the conflict.
+`contradicts_id` must match an ID from the candidates — never invent.
+
+NEW decision:
+title: {{new_title}}
+
+{{new_body}}
+
+EARLIER decisions in this context:
+
+{{candidates}}
+"""
+
+
 _GMAIL_RELEVANCE_PROMPT = """\
 <!-- Gmail relevance gate. Used by ghostbrain.connectors.gmail to decide
 whether a thread should be ingested into the vault. Anything the gate
@@ -174,6 +215,90 @@ audit log to understand the decision.
 Email to evaluate:
 
 {{content}}
+"""
+
+
+_WEEKLY_DIGEST_PROMPT = """\
+<!-- Weekly digest prompt. Used by ghostbrain.worker.weekly_digest. The
+output is a markdown document written to vault/10-daily/weekly/<week>.md
+verbatim. -->
+
+You are writing a weekly review for the user of a personal knowledge
+system. The user reads this once a week (Sunday morning) and wants a
+strategic view: what's drifting, what's recurring, who needs unblocking
+— patterns that don't show up in any single daily digest.
+
+Tone:
+- Direct. No preamble. No "I hope this helps". No "Here's your weekly".
+- Plain markdown. No emoji. No marketing voice.
+- Bullets, not paragraphs. Each bullet is one observation.
+- Skip sections silently when empty.
+- Aim for ~25 lines of content. The user re-reads this; brevity matters.
+
+## Wikilinks — IMPORTANT
+
+The input below renders many items as `<title> -> [[vault/path|alias]]`.
+Copy each wikilink VERBATIM. Keep the `[[path|alias]]` form exactly.
+Each bullet that references a specific decision, artifact, or stale
+item must end with its wikilink so the user can click through to the
+source note. Never invent a link.
+
+Structure (omit any section that has no content):
+
+```markdown
+# Week {{week_label}} — {{week_start}} -> {{week_end}}
+
+## At a glance
+
+[2-3 sentences. Lead with the single most important pattern of the
+week. If nothing meaningful happened, say "Quiet week." in one line.]
+
+## Decisions made
+
+[Every decision artifact captured this week, grouped by context. Each
+bullet ends with its `[[wikilink]]`.]
+
+## Action items still open
+
+[Action-item artifacts. Lead with owner if named. Each ends with the
+`[[wikilink]]`.]
+
+## Risks not moving
+
+[`unresolved` artifacts that aged >=3 days or appeared in multiple
+daily digests.]
+
+## Recurring themes
+
+[Cross-context threads — a topic in 2+ contexts, or a person in 2+
+days. Skip if nothing recurs.]
+
+## People to follow up with
+
+[From "Check-in suggestions" only. "<name> -- last activity <date> --
+<reason>".]
+
+## Where you appear unexpectedly
+
+[From "Unexpected references this week" only. Group by name; lead
+with [CROSS] items. One bullet per reference, ending with the
+`[[wikilink]]`.]
+
+## Quiet this week
+
+[From "Quiet contexts" only. One nudge line.]
+
+## System health
+
+[One line: "N events processed across <day_count> days. By source:
+<src: count, ...>."]
+```
+
+Be conservative — if the week was quiet, say so in one line and stop.
+
+This week's data:
+
+{{events}}
 """
 
 
@@ -332,6 +457,12 @@ with its `[[wikilink]]`. Skip section if empty.]
 chronologically: "HH:MM-HH:MM Title (context)" per bullet. Skip if no
 calendar data.]
 
+## Anticipated
+
+[Render only when "Anticipated absences" appears in input. One soft
+nudge bullet per absent context that's usually active on this
+weekday. Skip if empty.]
+
 ## <Context name>
 
 [One section per context with activity. 2-4 bullets max. Each bullet
@@ -452,9 +583,21 @@ confluence:
     # TODO: e.g. "ASCP": sanlam
     {}
 
-# Slack workspaces → context. Phase 9.
+# Slack workspaces → context. The connector polls each workspace for
+# @-mentions over the configured lookback window and routes them
+# straight to the listed context (workspace slug = strongest signal).
+# Required user-token scopes: search:read, users:read, team:read,
+# channels:history, groups:history, im:history, mpim:history.
+# Save tokens via `ghostbrain-slack-token-add <slug> <xoxp-token>`.
 slack:
   workspaces:
+    # Example:
+    #   sft:
+    #     context: sanlam
+    #     lookback_hours: 24
+    #     mentions_only: true
+    #   codeship:
+    #     context: codeship
     {}
 
 # Gmail accounts + routing. The connector polls each account in
@@ -541,6 +684,23 @@ profile:
     - ~/code
     - ~/development
 
+# Inverse search (Phase 13 strength feature). Surfaces unexpected
+# mentions of watched names in the weekly digest. Each entry is a
+# name key and the phrases the matcher should look for; optional
+# expected_contexts narrows where a mention is "expected" so cross-
+# context surfacings get flagged separately.
+inverse_search:
+  watched_names: {}
+  # Example:
+  #   jannik811:
+  #     - jannik
+  #     - jannik richter
+  #     - jr
+  expected_contexts: {}
+  # Example:
+  #   jannik811: [sanlam, codeship, personal]
+  lookback_days: 7
+
 # Autonomous meeting recorder (Phase 12). Watches Apple Calendar, records
 # eligible meetings via BlackHole + mic, transcribes with whisper.cpp,
 # links transcripts to calendar event notes.
@@ -559,8 +719,10 @@ recorder:
     "90-meta/prompts/extractor.md": _EXTRACTOR_PROMPT,
     "90-meta/prompts/transcript-extractor.md": _TRANSCRIPT_EXTRACTOR_PROMPT,
     "90-meta/prompts/gmail-relevance.md": _GMAIL_RELEVANCE_PROMPT,
+    "90-meta/prompts/reversal-check.md": _REVERSAL_CHECK_PROMPT,
     "90-meta/prompts/profile-updater.md": _PROFILE_UPDATER_PROMPT,
     "90-meta/prompts/digest.md": _DIGEST_PROMPT,
+    "90-meta/prompts/weekly-digest.md": _WEEKLY_DIGEST_PROMPT,
     "90-meta/prompts/classifier.md": "# Classifier prompt\n\nUsed for fine-grained classification. Defined later.\n",
     "80-profile/_index.md": """\
 # Profile index
