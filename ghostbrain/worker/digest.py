@@ -72,6 +72,8 @@ class DigestInput:
     health: dict[str, Any]
     review_queue_ids: list[str]
     today_calendar: list[CalendarItem] = dataclasses.field(default_factory=list)
+    stale_items: list[Any] = dataclasses.field(default_factory=list)  # StaleItem
+    checkins: list[Any] = dataclasses.field(default_factory=list)     # CheckinSuggestion
 
 
 def build_digest_input(target_date: date) -> DigestInput:
@@ -96,6 +98,7 @@ def build_digest_input(target_date: date) -> DigestInput:
     ]
 
     today_calendar = list(_load_today_calendar(target_date))
+    stale_items, checkins = _load_metrics()
 
     return DigestInput(
         digest_date=target_date.isoformat(),
@@ -105,7 +108,23 @@ def build_digest_input(target_date: date) -> DigestInput:
         health=health,
         review_queue_ids=[i for i in review_queue_ids if i],
         today_calendar=today_calendar,
+        stale_items=stale_items,
+        checkins=checkins,
     )
+
+
+def _load_metrics() -> tuple[list[Any], list[Any]]:
+    """Best-effort metrics load. Failures (missing module, vault state)
+    don't block the digest."""
+    try:
+        from ghostbrain.metrics.checkins import suggest_checkins
+        from ghostbrain.metrics.staleness import find_stale_items
+    except ImportError:
+        return [], []
+    try:
+        return find_stale_items(), suggest_checkins()
+    except Exception:  # noqa: BLE001
+        return [], []
 
 
 def render_input_for_prompt(d: DigestInput) -> str:
@@ -129,6 +148,26 @@ def render_input_for_prompt(d: DigestInput) -> str:
             location = f" @ {item.location}" if item.location else ""
             parts.append(
                 f"  [{item.context}] {when} {item.title}{location}"
+            )
+        parts.append("")
+
+    if d.checkins:
+        parts.append(f"Check-in suggestions ({len(d.checkins)} item(s)):")
+        for s in d.checkins:
+            parts.append(
+                f"  - {s.person} — {s.reason} (last activity "
+                f"{s.last_activity[:10]})"
+            )
+        parts.append("")
+
+    if d.stale_items:
+        prs = [i for i in d.stale_items if i.kind == "pr"]
+        tickets = [i for i in d.stale_items if i.kind == "ticket"]
+        parts.append(f"Stale items ({len(prs)} PR, {len(tickets)} ticket):")
+        for item in d.stale_items[:12]:
+            parts.append(
+                f"  [{item.kind}/{item.context}] {item.title} "
+                f"({item.age_days}d, {item.state})"
             )
         parts.append("")
 

@@ -199,6 +199,16 @@ Structure (omit any section that has no content):
 chronologically: "HH:MM–HH:MM Title (context)" per bullet. Omit
 if no calendar data.]
 
+## Needs you
+
+[Render only when "Stale items" appears in input. Surface stale PRs
+and tickets that need attention. Group by kind. Skip if empty.]
+
+## Check-ins suggested
+
+[Render only when "Check-in suggestions" appears in input. Format:
+"worth a check-in with <person> because <reason>". Skip if empty.]
+
 ## <Context name>
 
 [One section per context with activity. 2-4 bullets max.]
