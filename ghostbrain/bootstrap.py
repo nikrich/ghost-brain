@@ -326,9 +326,10 @@ thresholds:
 
 llm:
   # Aliases (`haiku`, `sonnet`, `opus`) are passed to `claude -p --model`.
-  router_model: haiku
-  extractor_model: sonnet
-  digest_model: sonnet
+  router_model: haiku       # frequent + classification
+  extractor_model: opus     # once/session — quality matters
+  digest_model: opus        # once/day — voice + synthesis matter
+  profile_model: opus       # confidence judgement on profile diffs
 
 worker:
   poll_interval_seconds: 5
