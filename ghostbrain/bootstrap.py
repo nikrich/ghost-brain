@@ -231,18 +231,34 @@ of the time.
 """
 
 _DIGEST_PROMPT = """\
-<!-- Digest prompt. Used by ghostbrain.worker.digest. -->
+<!-- Digest prompt. Used by ghostbrain.worker.digest. The output is a
+markdown document written to vault/10-daily/YYYY-MM-DD.md verbatim. -->
 
-You are writing a daily digest for a personal knowledge system. The user
-reads this once per morning and wants to know what happened yesterday across
-their work contexts in under 2 minutes.
+You are writing a daily digest for the user of a personal knowledge system.
+The user reads this once per morning. They want to know what happened
+yesterday across their work contexts in under 2 minutes.
 
 Tone:
-- Direct. No preamble. No "I hope this helps".
+- Direct. No preamble. No "I hope this helps". No "Here's your digest".
 - Plain markdown. No emoji. No marketing voice.
 - Per-context sections only when that context had activity. Skip silently
   when empty.
-- Short bullets, not paragraphs.
+- Short bullets, not paragraphs. The user reads diffs, not prose.
+
+## Wikilinks — IMPORTANT
+
+The input below renders many items as `<title> -> [[vault/path]]`. When
+you mention an item in your bullets, **always** include the wikilink so
+the user can click through. Never paste a raw event_id, file path, or
+artifact slug as plain text — use the `[[wikilink]]` form.
+
+Two specific rules:
+- For "Needs your decision", emit one bullet per review item formatted
+  as `- [[wikilink]] (source, confidence)` — no event_id in the bullet.
+- For per-context bullets, when summarising N items into one line, pick
+  the most representative wikilink and append it after the bullet text.
+  Don't list every link inline; the goal is one click-through per
+  thought.
 
 Structure (omit any section that has no content):
 
@@ -255,31 +271,38 @@ Structure (omit any section that has no content):
 
 ## Needs your decision
 
-[Only if events landed in needs_review. Skip otherwise.]
+[Only if review queue items appear in input. One bullet per item, each
+with its `[[wikilink]]`. Skip section if empty.]
 
 ## Today
 
 [Render only when "Today's calendar" appears in input. List meetings
-chronologically: "HH:MM–HH:MM Title (context)" per bullet. Omit
-if no calendar data.]
+chronologically: "HH:MM-HH:MM Title (context)" per bullet. Skip if no
+calendar data.]
+
+## <Context name>
+
+[One section per context with activity. 2-4 bullets max. Each bullet
+ends with the most relevant `[[wikilink]]`.
+
+If "Meeting transcripts captured" appears in input for this context,
+surface them as "<title> transcribed (N min) -> [[wikilink]]". One
+bullet per transcript max.
+
+If "Transcript-derived artifacts" appears for this context, group them
+by type and link the highest-signal one. Action items deserve their
+own bullet — call out owners by name where stated.]
 
 ## Needs you
 
 [Render only when "Stale items" appears in input. Surface stale PRs
-and tickets that need attention. Group by kind. Skip if empty.]
+and tickets that need attention, each with its `[[wikilink]]`. Group
+by kind. Skip if empty.]
 
 ## Check-ins suggested
 
 [Render only when "Check-in suggestions" appears in input. Format:
 "worth a check-in with <person> because <reason>". Skip if empty.]
-
-NOTE: If "Meeting transcripts captured" appears in input for any
-context, surface them in that context's section as "<title> transcribed
-(N min)". One bullet per transcript max.
-
-## <Context name>
-
-[One section per context with activity. 2-4 bullets max.]
 
 ## System health
 

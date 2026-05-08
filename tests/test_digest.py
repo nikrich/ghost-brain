@@ -107,7 +107,7 @@ def test_render_input_for_prompt_groups_by_context(vault: Path) -> None:
         notes=notes,
         by_context={"codeship": [notes[0]], "sanlam": [notes[1]]},
         health={"processed": 2, "failed": 0, "last_capture": "2026-05-07T11:00:00Z"},
-        review_queue_ids=[],
+        review_queue=[],
     )
 
     rendered = render_input_for_prompt(d)

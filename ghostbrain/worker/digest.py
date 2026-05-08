@@ -72,6 +72,26 @@ class TranscriptItem:
 
 
 @dataclasses.dataclass
+class TranscriptArtifact:
+    """Decision/action_item/unresolved/spec extracted from a transcript."""
+
+    context: str
+    artifact_type: str      # "decision", "action_item", "unresolved", "spec"
+    title: str
+    artifact_path: str
+    parent_transcript_path: str | None
+    created: str
+
+
+@dataclasses.dataclass
+class ReviewItem:
+    event_id: str
+    inbox_path: str | None
+    source: str
+    confidence: float
+
+
+@dataclasses.dataclass
 class DigestInput:
     """Structured payload handed to the LLM."""
 
@@ -80,11 +100,20 @@ class DigestInput:
     notes: list[CapturedNote]
     by_context: dict[str, list[CapturedNote]]
     health: dict[str, Any]
-    review_queue_ids: list[str]
+    review_queue: list[ReviewItem]
     today_calendar: list[CalendarItem] = dataclasses.field(default_factory=list)
     stale_items: list[Any] = dataclasses.field(default_factory=list)  # StaleItem
     checkins: list[Any] = dataclasses.field(default_factory=list)     # CheckinSuggestion
     transcripts: list[TranscriptItem] = dataclasses.field(default_factory=list)
+    transcript_artifacts: list[TranscriptArtifact] = dataclasses.field(
+        default_factory=list,
+    )
+
+    @property
+    def review_queue_ids(self) -> list[str]:
+        """Backwards-compat for callers (and the per-context render path)
+        that just want the IDs without paths."""
+        return [r.event_id for r in self.review_queue]
 
 
 def build_digest_input(target_date: date) -> DigestInput:
@@ -102,15 +131,21 @@ def build_digest_input(target_date: date) -> DigestInput:
         by_context[n.context].append(n)
 
     health = _build_health(audit_events, summary_day)
-    review_queue_ids = [
-        e.get("event_id", "")
+    review_queue = [
+        ReviewItem(
+            event_id=str(e.get("event_id") or ""),
+            inbox_path=str(e.get("inbox_path") or "") or None,
+            source=str(e.get("source") or ""),
+            confidence=float(e.get("confidence") or 0.0),
+        )
         for e in audit_events
-        if e.get("context") == "needs_review"
+        if e.get("context") == "needs_review" and e.get("event_id")
     ]
 
     today_calendar = list(_load_today_calendar(target_date))
     stale_items, checkins = _load_metrics()
     transcripts = list(_load_recent_transcripts(summary_day))
+    transcript_artifacts = list(_load_recent_transcript_artifacts(summary_day))
 
     return DigestInput(
         digest_date=target_date.isoformat(),
@@ -118,12 +153,62 @@ def build_digest_input(target_date: date) -> DigestInput:
         notes=notes,
         by_context=dict(by_context),
         health=health,
-        review_queue_ids=[i for i in review_queue_ids if i],
+        review_queue=review_queue,
         today_calendar=today_calendar,
         stale_items=stale_items,
         checkins=checkins,
         transcripts=transcripts,
+        transcript_artifacts=transcript_artifacts,
     )
+
+
+def _load_recent_transcript_artifacts(
+    summary_day: date,
+) -> Iterable[TranscriptArtifact]:
+    """Walk ``20-contexts/*/calendar/artifacts/<type>/*.md`` for artifacts
+    extracted from transcripts on ``summary_day``."""
+    contexts_root = vault_path() / "20-contexts"
+    if not contexts_root.exists():
+        return []
+
+    target = summary_day.isoformat()
+    out: list[TranscriptArtifact] = []
+
+    for ctx_dir in sorted(contexts_root.iterdir()):
+        if not ctx_dir.is_dir():
+            continue
+        artifacts_root = ctx_dir / "calendar" / "artifacts"
+        if not artifacts_root.exists():
+            continue
+        for type_dir in sorted(artifacts_root.iterdir()):
+            if not type_dir.is_dir():
+                continue
+            for path in sorted(type_dir.glob("*.md")):
+                try:
+                    note = frontmatter.load(path)
+                except Exception:  # noqa: BLE001
+                    continue
+                meta = note.metadata
+                created = str(meta.get("created") or "")
+                if not created.startswith(target):
+                    continue
+                title = (
+                    str(meta.get("title") or "")
+                    or _title_from_body(note.content)
+                    or path.stem
+                )
+                parent = str(meta.get("parent") or "").strip("[]") or None
+                out.append(TranscriptArtifact(
+                    context=str(meta.get("context") or ctx_dir.name),
+                    artifact_type=str(meta.get("artifactType") or type_dir.name),
+                    title=title,
+                    artifact_path=str(path),
+                    parent_transcript_path=parent,
+                    created=created,
+                ))
+
+    out.sort(key=lambda a: (a.context, a.artifact_type, a.created))
+    return out
 
 
 def _load_recent_transcripts(summary_day: date) -> Iterable[TranscriptItem]:
@@ -194,8 +279,14 @@ def _load_metrics() -> tuple[list[Any], list[Any]]:
 
 
 def render_input_for_prompt(d: DigestInput) -> str:
-    """Render the structured input as plain text the LLM digests."""
-    if not d.notes and not d.review_queue_ids and not d.today_calendar:
+    """Render the structured input as plain text the LLM digests.
+
+    Every item that has a corresponding vault note is rendered with a
+    trailing ``[[wikilink]]`` so the LLM can — and is instructed to —
+    preserve those links in its bullets. The user clicks them in
+    Obsidian to jump to the source.
+    """
+    if not d.notes and not d.review_queue and not d.today_calendar:
         return f"Date: {d.digest_date}\n\nNo events captured.\n"
 
     parts: list[str] = [
@@ -223,8 +314,25 @@ def render_input_for_prompt(d: DigestInput) -> str:
             duration = (
                 f", {t.duration_minutes:.0f} min" if t.duration_minutes else ""
             )
+            link = _wikilink_for_path(t.transcript_path)
+            parent_link = (
+                f" (parent: [[{t.parent_path}]])"
+                if t.parent_path
+                else ""
+            )
             parts.append(
-                f"  [{t.context}] {t.title}{duration}"
+                f"  [{t.context}] {t.title}{duration} → {link}{parent_link}"
+            )
+        parts.append("")
+
+    if d.transcript_artifacts:
+        parts.append(
+            f"Transcript-derived artifacts ({len(d.transcript_artifacts)}):"
+        )
+        for a in d.transcript_artifacts:
+            link = _wikilink_for_path(a.artifact_path)
+            parts.append(
+                f"  [{a.context}/{a.artifact_type}] {a.title} → {link}"
             )
         parts.append("")
 
@@ -242,16 +350,21 @@ def render_input_for_prompt(d: DigestInput) -> str:
         tickets = [i for i in d.stale_items if i.kind == "ticket"]
         parts.append(f"Stale items ({len(prs)} PR, {len(tickets)} ticket):")
         for item in d.stale_items[:12]:
+            link = _wikilink_for_path(getattr(item, "note_path", "") or "")
+            link_part = f" → {link}" if link else ""
             parts.append(
                 f"  [{item.kind}/{item.context}] {item.title} "
-                f"({item.age_days}d, {item.state})"
+                f"({item.age_days}d, {item.state}){link_part}"
             )
         parts.append("")
 
-    if d.review_queue_ids:
-        parts.append(f"Needs review (count {len(d.review_queue_ids)}):")
-        for eid in d.review_queue_ids:
-            parts.append(f"  - {eid}")
+    if d.review_queue:
+        parts.append(f"Needs review (count {len(d.review_queue)}):")
+        for r in d.review_queue:
+            link = _wikilink_for_path(r.inbox_path or "") if r.inbox_path else ""
+            link_part = f" → {link}" if link else ""
+            src = f" [{r.source}]" if r.source else ""
+            parts.append(f"  - {r.event_id}{src}{link_part}")
         parts.append("")
 
     for ctx in _ordered_contexts(d.by_context):
@@ -265,9 +378,11 @@ def render_input_for_prompt(d: DigestInput) -> str:
                 if n.artifact_count
                 else ""
             )
+            link = _wikilink_for_path(n.note_path or "") if n.note_path else ""
+            link_part = f" → {link}" if link else ""
             parts.append(
                 f"  - [{n.source}] {n.title}{artifact_note}"
-                f" (routed via {n.routing_method})"
+                f" (routed via {n.routing_method}){link_part}"
             )
         parts.append("")
 
@@ -276,6 +391,21 @@ def render_input_for_prompt(d: DigestInput) -> str:
         parts.append(f"  {k}: {v}")
 
     return "\n".join(parts)
+
+
+def _wikilink_for_path(absolute_or_rel: str) -> str:
+    """Return ``[[20-contexts/...]]`` for a path inside the vault, or ``""``
+    if the path is empty or outside the vault."""
+    if not absolute_or_rel:
+        return ""
+    p = Path(absolute_or_rel)
+    try:
+        rel = p.relative_to(vault_path())
+    except ValueError:
+        if p.is_absolute():
+            return ""
+        rel = p
+    return f"[[{rel.with_suffix('').as_posix()}]]"
 
 
 def _short_time(iso: str) -> str:
