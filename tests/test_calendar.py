@@ -180,6 +180,92 @@ def test_digest_loads_today_calendar(vault: Path) -> None:
     assert item.start.startswith("2026-05-09")
 
 
+def test_macos_connector_normalizes_jxa_payload(vault: Path, tmp_path: Path) -> None:
+    """The macOS connector parses the JSON the JXA script returns."""
+    import json
+    from ghostbrain.connectors.calendar.macos import MacosCalendarConnector
+
+    connector = MacosCalendarConnector(
+        config={"accounts": {"Calendar": "sanlam"}},
+        queue_dir=tmp_path / "q",
+        state_dir=tmp_path / "s",
+    )
+
+    fake_payload = {
+        "events": [{
+            "calendar": "Calendar",
+            "uid": "abc-123",
+            "summary": "Standup",
+            "start": "2026-05-09T09:30:00.000Z",
+            "end":   "2026-05-09T10:00:00.000Z",
+            "location": "Online",
+            "description": "Daily sync",
+            "allDay": False,
+            "url": "",
+        }, {
+            "calendar": "Calendar",
+            "uid": "all-day-1",
+            "summary": "Public Holiday",
+            "start": "2026-05-09T00:00:00.000Z",
+            "end":   "2026-05-10T00:00:00.000Z",
+            "allDay": True,
+        }, {
+            "calendar": "OtherCal",   # not in routing — should be filtered
+            "uid": "should-be-skipped",
+            "summary": "x",
+            "start": "2026-05-09T11:00:00Z",
+        }],
+        "errors": [],
+    }
+
+    class FakeProc:
+        returncode = 0
+        stdout = json.dumps(fake_payload)
+        stderr = ""
+
+    with patch("ghostbrain.connectors.calendar.macos.subprocess.run",
+               return_value=FakeProc()):
+        events = connector.fetch(datetime(2026, 5, 9, tzinfo=timezone.utc))
+
+    assert len(events) == 2
+    titles = {ev["title"] for ev in events}
+    assert titles == {"Standup", "Public Holiday"}
+    holiday = next(ev for ev in events if ev["title"] == "Public Holiday")
+    assert holiday["subtype"] == "all-day"
+    # All-day events shaped as YYYY-MM-DD (matches Google's all-day shape).
+    assert holiday["metadata"]["start"] == "2026-05-09"
+    assert holiday["metadata"]["account"] == "Calendar"
+    assert holiday["metadata"]["provider"] == "macos"
+
+
+def test_macos_connector_returns_empty_when_unconfigured(vault: Path, tmp_path: Path) -> None:
+    from ghostbrain.connectors.calendar.macos import MacosCalendarConnector
+    connector = MacosCalendarConnector(
+        config={"accounts": {}},
+        queue_dir=tmp_path / "q", state_dir=tmp_path / "s",
+    )
+    assert connector.fetch(datetime(2026, 5, 9, tzinfo=timezone.utc)) == []
+
+
+def test_router_path_routes_macos_calendar_event(vault: Path) -> None:
+    from ghostbrain.worker.router import route_event
+    routing = {
+        "calendar": {
+            "macos": {"accounts": {"Calendar": "sanlam"}},
+        },
+    }
+    event = {
+        "id": "calendar:macos:Calendar:abc",
+        "source": "calendar",
+        "type": "event",
+        "title": "Standup",
+        "metadata": {"provider": "macos", "account": "Calendar"},
+    }
+    decision = route_event(event, routing=routing)
+    assert decision.context == "sanlam"
+    assert decision.method == "path"
+
+
 def test_digest_ignores_calendar_for_other_dates(vault: Path) -> None:
     import yaml
     from ghostbrain.worker.digest import build_digest_input
