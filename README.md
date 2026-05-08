@@ -1,6 +1,6 @@
 # Ghost Brain
 
-<img width="779" height="779" alt="Ghost Brain" src="https://github.com/user-attachments/assets/e08e24c2-ad5d-4edb-b10e-d9a73ecaf3e8" />
+<img width="1510" height="864" alt="image" src="https://github.com/user-attachments/assets/28bd797b-9491-44be-9326-0bd5684eaa02" />
 
 A self-hosted personal knowledge automation system. Captures activity from
 your tools (Claude Code & Desktop, GitHub, Jira, Confluence, Slack, Gmail,
