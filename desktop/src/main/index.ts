@@ -2,12 +2,16 @@ import { app, BrowserWindow } from 'electron';
 import { join } from 'node:path';
 
 function createWindow() {
+  const isMac = process.platform === 'darwin';
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 1024,
     minHeight: 720,
     show: false,
+    backgroundColor: '#0E0F12',
+    titleBarStyle: isMac ? 'hiddenInset' : 'default',
+    trafficLightPosition: isMac ? { x: 14, y: 14 } : undefined,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
