@@ -62,6 +62,16 @@ class CalendarItem:
 
 
 @dataclasses.dataclass
+class TranscriptItem:
+    context: str
+    title: str          # parent meeting title (e.g. "TrustFlow Deep Dive")
+    transcript_path: str
+    parent_path: str | None
+    started: str
+    duration_minutes: float
+
+
+@dataclasses.dataclass
 class DigestInput:
     """Structured payload handed to the LLM."""
 
@@ -74,6 +84,7 @@ class DigestInput:
     today_calendar: list[CalendarItem] = dataclasses.field(default_factory=list)
     stale_items: list[Any] = dataclasses.field(default_factory=list)  # StaleItem
     checkins: list[Any] = dataclasses.field(default_factory=list)     # CheckinSuggestion
+    transcripts: list[TranscriptItem] = dataclasses.field(default_factory=list)
 
 
 def build_digest_input(target_date: date) -> DigestInput:
@@ -99,6 +110,7 @@ def build_digest_input(target_date: date) -> DigestInput:
 
     today_calendar = list(_load_today_calendar(target_date))
     stale_items, checkins = _load_metrics()
+    transcripts = list(_load_recent_transcripts(summary_day))
 
     return DigestInput(
         digest_date=target_date.isoformat(),
@@ -110,7 +122,61 @@ def build_digest_input(target_date: date) -> DigestInput:
         today_calendar=today_calendar,
         stale_items=stale_items,
         checkins=checkins,
+        transcripts=transcripts,
     )
+
+
+def _load_recent_transcripts(summary_day: date) -> Iterable[TranscriptItem]:
+    """Walk ``20-contexts/*/calendar/transcripts/*.md`` and surface
+    transcripts whose ``created`` lands on ``summary_day`` (the day the
+    digest is summarizing)."""
+    contexts_root = vault_path() / "20-contexts"
+    if not contexts_root.exists():
+        return []
+
+    out: list[TranscriptItem] = []
+    target = summary_day.isoformat()
+
+    for ctx_dir in sorted(contexts_root.iterdir()):
+        if not ctx_dir.is_dir():
+            continue
+        tx_dir = ctx_dir / "calendar" / "transcripts"
+        if not tx_dir.exists():
+            continue
+        for path in tx_dir.glob("*.md"):
+            try:
+                note = frontmatter.load(path)
+            except Exception:  # noqa: BLE001
+                continue
+            meta = note.metadata
+            created = str(meta.get("created") or "")
+            if not created.startswith(target):
+                continue
+
+            # Title in transcript artifacts is "Transcript: <parent-title>";
+            # strip the prefix to surface just the meeting name.
+            raw_title = str(meta.get("title") or path.stem)
+            meeting_title = raw_title.removeprefix("Transcript: ").strip()
+
+            duration_s = meta.get("durationSeconds")
+            try:
+                minutes = round(float(duration_s) / 60.0, 1) if duration_s else 0.0
+            except (TypeError, ValueError):
+                minutes = 0.0
+
+            parent = str(meta.get("parent") or "").strip("[]")
+
+            out.append(TranscriptItem(
+                context=str(meta.get("context") or ctx_dir.name),
+                title=meeting_title,
+                transcript_path=str(path),
+                parent_path=parent or None,
+                started=str(meta.get("started") or created),
+                duration_minutes=minutes,
+            ))
+
+    out.sort(key=lambda t: t.started)
+    return out
 
 
 def _load_metrics() -> tuple[list[Any], list[Any]]:
@@ -148,6 +214,17 @@ def render_input_for_prompt(d: DigestInput) -> str:
             location = f" @ {item.location}" if item.location else ""
             parts.append(
                 f"  [{item.context}] {when} {item.title}{location}"
+            )
+        parts.append("")
+
+    if d.transcripts:
+        parts.append(f"Meeting transcripts captured ({len(d.transcripts)}):")
+        for t in d.transcripts:
+            duration = (
+                f", {t.duration_minutes:.0f} min" if t.duration_minutes else ""
+            )
+            parts.append(
+                f"  [{t.context}] {t.title}{duration}"
             )
         parts.append("")
 

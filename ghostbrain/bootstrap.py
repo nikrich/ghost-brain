@@ -209,6 +209,10 @@ and tickets that need attention. Group by kind. Skip if empty.]
 [Render only when "Check-in suggestions" appears in input. Format:
 "worth a check-in with <person> because <reason>". Skip if empty.]
 
+NOTE: If "Meeting transcripts captured" appears in input for any
+context, surface them in that context's section as "<title> transcribed
+(N min)". One bullet per transcript max.
+
 ## <Context name>
 
 [One section per context with activity. 2-4 bullets max.]
