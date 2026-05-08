@@ -192,3 +192,12 @@ body[data-theme='light'] {
   background-clip: padding-box;
   border: 2px solid transparent;
 }
+
+/* density: compact tightens vertical rhythm across key surfaces */
+[data-density='compact'] .gb-topbar { height: 48px; }
+[data-density='compact'] .gb-statusbar { height: 22px; }
+[data-density='compact'] .gb-navrow { padding-top: 4px; padding-bottom: 4px; }
+[data-density='compact'] .gb-sidenav { padding-top: 6px; padding-bottom: 6px; }
+[data-density='compact'] .gb-setting-row { padding-top: 10px; padding-bottom: 10px; }
+[data-density='compact'] .gb-panel-header { padding-top: 8px; padding-bottom: 8px; padding-left: 12px; padding-right: 12px; }
+[data-density='compact'] .gb-panel-body { padding: 8px; }
