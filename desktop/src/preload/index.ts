@@ -13,6 +13,14 @@ const bridge: GbBridge = {
     openPath: (path: string) => ipcRenderer.invoke('gb:shell:openPath', path),
   },
   platform: process.platform,
+  on: (channel, listener) => {
+    const wrapped = () => listener();
+    const ipcChannel = `gb:${channel}`;
+    ipcRenderer.on(ipcChannel, wrapped);
+    return () => {
+      ipcRenderer.off(ipcChannel, wrapped);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld('gb', bridge);

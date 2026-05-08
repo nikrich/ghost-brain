@@ -5,6 +5,7 @@ import { pickVaultFolder } from './dialogs';
 import { settingsSchema } from '../shared/settings-schema';
 import type { Settings } from '../shared/types';
 import { loadInitialState, attachStatePersistence } from './window-state';
+import { buildAppMenu } from './menu';
 
 function createWindow() {
   const isMac = process.platform === 'darwin';
@@ -71,7 +72,10 @@ ipcMain.handle('gb:shell:openPath', async (_e, p: unknown) => {
   return { ok: true };
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  buildAppMenu();
+  createWindow();
+});
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });

@@ -15,6 +15,7 @@ import { SettingsScreen } from './screens/settings';
 export default function App() {
   const { theme, density, ready, hydrate } = useSettings();
   const active = useNavigation((s) => s.active);
+  const setActive = useNavigation((s) => s.setActive);
 
   useEffect(() => {
     hydrate();
@@ -24,6 +25,9 @@ export default function App() {
     document.body.dataset.theme = theme;
     document.body.dataset.density = density;
   }, [theme, density, ready]);
+  useEffect(() => {
+    return window.gb.on('nav:settings', () => setActive('settings'));
+  }, [setActive]);
 
   if (!ready) {
     return <div className="bg-paper text-ink-2 grid h-full place-items-center">…</div>;
