@@ -6,6 +6,7 @@ import { Sidebar } from './components/Sidebar';
 import { StatusBar } from './components/StatusBar';
 import { Toaster } from './components/Toaster';
 import { TodayScreen } from './screens/today';
+import { ConnectorsScreen } from './screens/connectors';
 
 function ScreenStub({ name }: { name: string }) {
   return (
@@ -45,7 +46,9 @@ export default function App() {
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar />
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {active === 'today' ? <TodayScreen /> : <ScreenStub name={active} />}
+          {active === 'today' && <TodayScreen />}
+          {active === 'connectors' && <ConnectorsScreen />}
+          {active !== 'today' && active !== 'connectors' && <ScreenStub name={active} />}
         </main>
       </div>
       <StatusBar />
