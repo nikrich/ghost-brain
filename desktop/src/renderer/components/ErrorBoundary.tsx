@@ -19,6 +19,11 @@ export class ErrorBoundary extends Component<Props, State> {
     if (import.meta.env.DEV) {
       console.error('Renderer error:', error, info.componentStack);
     }
+    // Best-effort toast — works once toast store is mounted; if the error
+    // happened before App rendered, the toast is just queued and shown later.
+    import('../stores/toast').then(({ toast }) => {
+      toast.error(error.message || 'Something went wrong');
+    });
   }
 
   reload = () => {

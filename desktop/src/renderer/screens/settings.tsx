@@ -5,7 +5,7 @@ import { Lucide } from '../components/Lucide';
 import { Toggle } from '../components/Toggle';
 import { Ghost } from '../components/Ghost';
 import { useSettings } from '../stores/settings';
-import { useToasts } from '../stores/toast';
+import { toast } from '../stores/toast';
 import { HOTKEYS, format as formatShortcut } from '../lib/shortcuts';
 import type {
   FolderStructure,
@@ -21,7 +21,7 @@ async function trySet<K extends keyof Settings>(
   value: Settings[K],
 ) {
   const r = await setSetting(key, value);
-  if (!r.ok) useToasts.getState().push(r.error);
+  if (!r.ok) toast.error(r.error);
 }
 
 type SectionId = 'display' | 'vault' | 'privacy' | 'meeting' | 'hotkeys' | 'account' | 'about';

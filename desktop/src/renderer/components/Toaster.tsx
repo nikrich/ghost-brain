@@ -1,4 +1,10 @@
-import { useToasts } from '../stores/toast';
+import { useToasts, type ToastKind } from '../stores/toast';
+
+const KIND_CLASSES: Record<ToastKind, string> = {
+  info: 'border-hairline-2 bg-vellum text-ink-0',
+  success: 'border-neon/40 bg-neon/12 text-neon',
+  error: 'border-oxblood/40 bg-oxblood/15 text-oxblood',
+};
 
 export function Toaster() {
   const toasts = useToasts((s) => s.toasts);
@@ -7,7 +13,8 @@ export function Toaster() {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="rounded-md border border-hairline-2 bg-vellum px-[14px] py-[10px] font-mono text-12 text-ink-0 shadow-card"
+          role={t.kind === 'error' ? 'alert' : 'status'}
+          className={`rounded-md border px-[14px] py-[10px] font-mono text-12 shadow-card ${KIND_CLASSES[t.kind]}`}
         >
           {t.message}
         </div>
