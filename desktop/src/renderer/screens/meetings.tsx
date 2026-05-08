@@ -22,12 +22,12 @@ import { mmss } from '../lib/format';
 export function MeetingsScreen() {
   const { phase, startedAt, start, stop, reset } = useMeeting();
   return (
-    <div style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-paper)' }}>
+    <div className="flex-1 overflow-y-auto bg-paper">
       <TopBar
         title="meetings"
         subtitle={phase === 'recording' ? '· recording in progress' : '47 in vault · 2 today'}
         right={
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="flex gap-2">
             <Btn
               variant="ghost"
               size="sm"
@@ -66,128 +66,63 @@ interface PreMeetingProps {
 
 function PreMeeting({ onStart }: PreMeetingProps) {
   return (
-    <div style={{ padding: '24px 32px', maxWidth: 1100 }}>
-      <div
-        className="gb-noise"
-        style={{
-          position: 'relative',
-          overflow: 'hidden',
-          background: 'var(--bg-vellum)',
-          border: '1px solid var(--hairline)',
-          borderRadius: 12,
-          padding: 32,
-          display: 'grid',
-          gridTemplateColumns: '1.3fr 1fr',
-          gap: 32,
-        }}
-      >
+    <div className="max-w-[1100px] px-8 py-6">
+      <div className="gb-noise relative grid grid-cols-[1.3fr_1fr] gap-8 overflow-hidden rounded-lg border border-hairline bg-vellum p-8">
         <div
+          className="pointer-events-none absolute -right-[100px] -top-[100px] h-[400px] w-[400px]"
           style={{
-            position: 'absolute',
-            top: -100,
-            right: -100,
-            width: 400,
-            height: 400,
             background: 'radial-gradient(circle, rgba(197,255,61,0.08) 0%, transparent 60%)',
-            pointerEvents: 'none',
           }}
         />
 
-        <div style={{ position: 'relative' }}>
-          <Pill tone="neon" style={{ marginBottom: 14 }}>
+        <div className="relative">
+          <Pill tone="neon" className="mb-[14px]">
             <Lucide name="clock" size={9} /> starts in 23m
           </Pill>
-          <h2
-            style={{
-              margin: 0,
-              fontFamily: 'var(--font-display)',
-              fontSize: 32,
-              fontWeight: 600,
-              color: 'var(--ink-0)',
-              letterSpacing: '-0.03em',
-              lineHeight: 1.05,
-            }}
-          >
+          <h2 className="m-0 font-display text-32 font-semibold leading-[1.05] tracking-tighter text-ink-0">
             design crit · onboarding v3
           </h2>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16,
-              marginTop: 12,
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              color: 'var(--ink-2)',
-            }}
-          >
+          <div className="mt-3 flex items-center gap-4 font-mono text-11 text-ink-2">
             <span>
-              <Lucide name="calendar" size={11} style={{ marginRight: 5, verticalAlign: -2 }} />{' '}
+              <Lucide
+                name="calendar"
+                size={11}
+                className="mr-[5px] align-[-2px] inline-block"
+              />{' '}
               today · 11:00 — 11:30
             </span>
             <span>
-              <Lucide name="map-pin" size={11} style={{ marginRight: 5, verticalAlign: -2 }} />{' '}
+              <Lucide
+                name="map-pin"
+                size={11}
+                className="mr-[5px] align-[-2px] inline-block"
+              />{' '}
               google meet
             </span>
           </div>
 
-          <div
-            style={{
-              marginTop: 24,
-              padding: 16,
-              background: 'var(--bg-paper)',
-              borderRadius: 8,
-              border: '1px solid var(--hairline)',
-            }}
-          >
-            <Eyebrow style={{ marginBottom: 8 }}>ghostbrain primed</Eyebrow>
-            <ul
-              style={{
-                margin: 0,
-                padding: 0,
-                listStyle: 'none',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-              }}
-            >
+          <div className="mt-6 rounded-md border border-hairline bg-paper p-4">
+            <Eyebrow className="mb-2">ghostbrain primed</Eyebrow>
+            <ul className="m-0 flex list-none flex-col gap-[6px] p-0">
               {[
                 'pulled 14 messages from #design-crit since last session',
                 'linked GHO-241, GHO-247 from linear',
                 '2 onboarding mocks in notion, last edited 2h ago',
                 'transcript will land in ~/brain/Meetings/2026-05-08-design-crit.md',
               ].map((line, i) => (
-                <li
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 8,
-                    fontSize: 12,
-                    color: 'var(--ink-1)',
-                  }}
-                >
-                  <Lucide name="check" size={11} color="var(--neon)" style={{ marginTop: 4 }} />
+                <li key={i} className="flex items-start gap-2 text-12 text-ink-1">
+                  <Lucide name="check" size={11} color="var(--neon)" className="mt-1" />
                   <span>{line}</span>
                 </li>
               ))}
             </ul>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+          <div className="mt-6 flex gap-[10px]">
             <Btn
               variant="record"
               size="lg"
-              icon={
-                <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: '#0E0F12',
-                  }}
-                />
-              }
+              icon={<span className="h-2 w-2 rounded-full bg-[#0E0F12]" />}
               onClick={onStart}
             >
               start recording
@@ -207,23 +142,16 @@ function PreMeeting({ onStart }: PreMeetingProps) {
         </div>
 
         {/* Right: participants + audio preview */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 16,
-            position: 'relative',
-          }}
-        >
+        <div className="relative flex flex-col gap-4">
           <Eyebrow>participants · 4</Eyebrow>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div className="flex flex-col gap-1">
             {PARTICIPANTS.map((p) => (
               <ParticipantRow key={p.name} {...p} />
             ))}
           </div>
 
-          <div style={{ marginTop: 8 }}>
-            <Eyebrow style={{ marginBottom: 8 }}>audio source</Eyebrow>
+          <div className="mt-2">
+            <Eyebrow className="mb-2">audio source</Eyebrow>
             <AudioSource icon="mic" label="MacBook Pro Microphone" sub="default · 48 kHz" active />
             <AudioSource
               icon="volume-2"
@@ -234,8 +162,8 @@ function PreMeeting({ onStart }: PreMeetingProps) {
             <AudioSource icon="bluetooth" label="AirPods Pro" sub="not connected" active={false} />
           </div>
 
-          <div style={{ marginTop: 8 }}>
-            <Eyebrow style={{ marginBottom: 8 }}>level</Eyebrow>
+          <div className="mt-2">
+            <Eyebrow className="mb-2">level</Eyebrow>
             <Waveform />
           </div>
         </div>
@@ -246,41 +174,15 @@ function PreMeeting({ onStart }: PreMeetingProps) {
 
 function ParticipantRow({ name, role, color }: Participant) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '6px 8px',
-        borderRadius: 4,
-      }}
-    >
+    <div className="flex items-center gap-[10px] rounded-sm px-2 py-[6px]">
       <div
-        style={{
-          width: 24,
-          height: 24,
-          borderRadius: '50%',
-          background: color,
-          color: '#0E0F12',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 11,
-          fontWeight: 600,
-        }}
+        className="flex h-6 w-6 items-center justify-center rounded-full text-11 font-semibold text-[#0E0F12]"
+        style={{ background: color }}
       >
         {name[0]}
       </div>
-      <span style={{ fontSize: 12, color: 'var(--ink-0)', flex: 1 }}>{name}</span>
-      <span
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 10,
-          color: 'var(--ink-2)',
-        }}
-      >
-        {role}
-      </span>
+      <span className="flex-1 text-12 text-ink-0">{name}</span>
+      <span className="font-mono text-10 text-ink-2">{role}</span>
     </div>
   );
 }
@@ -295,31 +197,16 @@ interface AudioSourceProps {
 function AudioSource({ icon, label, sub, active }: AudioSourceProps) {
   return (
     <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '8px 10px',
-        borderRadius: 6,
-        marginBottom: 4,
-        background: active ? 'rgba(197,255,61,0.08)' : 'transparent',
-        border: `1px solid ${active ? 'rgba(197,255,61,0.20)' : 'var(--hairline)'}`,
-        cursor: 'pointer',
-        opacity: active ? 1 : 0.55,
-      }}
+      className={`mb-1 flex cursor-pointer items-center gap-[10px] rounded-r6 border px-[10px] py-2 ${
+        active
+          ? 'border-neon/20 bg-neon/[0.08] opacity-100'
+          : 'border-hairline bg-transparent opacity-55'
+      }`}
     >
       <Lucide name={icon} size={13} color={active ? 'var(--neon)' : 'var(--ink-2)'} />
-      <div style={{ flex: 1, lineHeight: 1.2 }}>
-        <div style={{ fontSize: 12, color: 'var(--ink-0)' }}>{label}</div>
-        <div
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 9,
-            color: 'var(--ink-2)',
-          }}
-        >
-          {sub}
-        </div>
+      <div className="flex-1 leading-[1.2]">
+        <div className="text-12 text-ink-0">{label}</div>
+        <div className="font-mono text-9 text-ink-2">{sub}</div>
       </div>
       {active && <Lucide name="check" size={12} color="var(--neon)" />}
     </div>
@@ -334,27 +221,14 @@ function Waveform({ live = false }: WaveformProps) {
   const bars = 48;
   const heights = useMemo(() => Array.from({ length: bars }, () => 0.2 + Math.random() * 0.8), []);
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2,
-        height: 36,
-        padding: '0 12px',
-        background: 'var(--bg-paper)',
-        border: '1px solid var(--hairline)',
-        borderRadius: 6,
-      }}
-    >
+    <div className="flex h-9 items-center gap-[2px] rounded-r6 border border-hairline bg-paper px-3">
       {heights.map((h, i) => (
         <div
           key={i}
+          className={`flex-1 rounded-[1px] ${live ? 'bg-neon' : 'bg-ink-3'}`}
           style={{
-            flex: 1,
             height: `${h * 100}%`,
-            background: live ? 'var(--neon)' : 'var(--ink-3)',
             opacity: live ? 0.5 + h * 0.5 : 0.4 + h * 0.4,
-            borderRadius: 1,
             animation: live ? `gb-wave 1.${i % 9}s ease-in-out infinite alternate` : 'none',
           }}
         />
@@ -379,76 +253,41 @@ function ActiveRecording({ startedAt, onStop }: ActiveRecordingProps) {
   }, [startedAt]);
 
   return (
-    <div style={{ padding: '24px 32px', maxWidth: 1100 }}>
+    <div className="max-w-[1100px] px-8 py-6">
       {/* live banner */}
       <div
+        className="mb-4 grid grid-cols-[auto_1fr_auto] items-center gap-6 rounded-lg border border-oxblood/30 p-5"
         style={{
           background:
             'linear-gradient(90deg, rgba(255,107,90,0.18) 0%, rgba(255,107,90,0.04) 100%)',
-          border: '1px solid rgba(255,107,90,0.30)',
-          borderRadius: 12,
-          padding: 20,
-          display: 'grid',
-          gridTemplateColumns: 'auto 1fr auto',
-          gap: 24,
-          alignItems: 'center',
-          marginBottom: 16,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="flex items-center gap-[10px]">
           <span
+            className="h-3 w-3 rounded-full bg-oxblood"
             style={{
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              background: 'var(--oxblood)',
               boxShadow: '0 0 0 0 rgba(255,107,90,0.6)',
               animation: 'gb-pulse 1.4s ease-out infinite',
             }}
           />
-          <div style={{ lineHeight: 1.15 }}>
-            <div
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 10,
-                color: 'var(--oxblood)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.14em',
-              }}
-            >
+          <div className="leading-[1.15]">
+            <div className="font-mono text-10 uppercase tracking-eyebrow-loose text-oxblood">
               recording · live
             </div>
-            <div
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 22,
-                fontWeight: 600,
-                color: 'var(--ink-0)',
-                letterSpacing: '-0.02em',
-              }}
-            >
+            <div className="font-display text-22 font-semibold tracking-tight-xx text-ink-0">
               design crit · onboarding v3
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <div style={{ width: 280 }}>
+        <div className="flex justify-center">
+          <div className="w-[280px]">
             <Waveform live />
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 28,
-              fontWeight: 500,
-              color: 'var(--ink-0)',
-              letterSpacing: '0.04em',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
+        <div className="flex items-center gap-3">
+          <div className="font-mono text-28 font-medium tracking-[0.04em] tabular-nums text-ink-0">
             {mmss(elapsed)}
           </div>
           <Btn
@@ -462,7 +301,7 @@ function ActiveRecording({ startedAt, onStop }: ActiveRecordingProps) {
           <Btn
             variant="record"
             size="md"
-            icon={<span style={{ width: 9, height: 9, background: '#0E0F12' }} />}
+            icon={<span className="h-[9px] w-[9px] bg-[#0E0F12]" />}
             onClick={onStop}
           >
             stop
@@ -471,12 +310,12 @@ function ActiveRecording({ startedAt, onStop }: ActiveRecordingProps) {
       </div>
 
       {/* live transcript + side rail */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 16 }}>
+      <div className="grid grid-cols-[1.6fr_1fr] gap-4">
         <Panel
           title="live transcript"
           subtitle="diarized · 4 speakers"
           action={
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div className="flex gap-[6px]">
               <Pill tone="moss">
                 <Lucide name="check" size={9} /> auto-saving
               </Pill>
@@ -491,88 +330,32 @@ function ActiveRecording({ startedAt, onStop }: ActiveRecordingProps) {
             </div>
           }
         >
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 14,
-              padding: '8px 4px',
-              maxHeight: 360,
-              overflowY: 'auto',
-            }}
-          >
+          <div className="flex max-h-[360px] flex-col gap-[14px] overflow-y-auto px-1 py-2">
             {TRANSCRIPT.map((line: TranscriptLine, i) => (
               <div
                 key={i}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '64px 1fr',
-                  gap: 12,
-                  opacity: line.live ? 1 : 0.92,
-                }}
+                className={`grid grid-cols-[64px_1fr] gap-3 ${line.live ? 'opacity-100' : 'opacity-90'}`}
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    gap: 2,
-                  }}
-                >
+                <div className="flex flex-col items-start gap-[2px]">
                   <div
-                    style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: '50%',
-                      background: line.color,
-                      color: '#0E0F12',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 10,
-                      fontWeight: 600,
-                    }}
+                    className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-10 font-semibold text-[#0E0F12]"
+                    style={{ background: line.color }}
                   >
                     {line.who[0]}
                   </div>
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 9,
-                      color: 'var(--ink-3)',
-                    }}
-                  >
-                    {line.t}
-                  </div>
+                  <div className="font-mono text-9 text-ink-3">{line.t}</div>
                 </div>
                 <div>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: 'var(--ink-2)',
-                      marginBottom: 2,
-                      textTransform: 'lowercase',
-                    }}
-                  >
-                    {line.who}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 14,
-                      color: 'var(--ink-0)',
-                      lineHeight: 1.55,
-                    }}
-                  >
+                  <div className="mb-[2px] text-11 lowercase text-ink-2">{line.who}</div>
+                  <div className="text-14 leading-[1.55] text-ink-0">
                     {line.text}
                     {line.live && (
                       <span
+                        className="ml-1 inline-block bg-neon"
                         style={{
-                          display: 'inline-block',
                           width: 6,
                           height: 14,
-                          background: 'var(--neon)',
                           verticalAlign: -2,
-                          marginLeft: 4,
                           animation: 'gb-blink 1s steps(2) infinite',
                         }}
                       />
@@ -584,61 +367,22 @@ function ActiveRecording({ startedAt, onStop }: ActiveRecordingProps) {
           </div>
         </Panel>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="flex flex-col gap-4">
           <Panel title="speakers" subtitle="airtime">
             {PARTICIPANTS.map((p, i) => (
-              <div
-                key={p.name}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '6px 4px',
-                }}
-              >
+              <div key={p.name} className="flex items-center gap-[10px] px-1 py-[6px]">
                 <div
-                  style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: '50%',
-                    background: p.color,
-                  }}
+                  className="h-[18px] w-[18px] rounded-full"
+                  style={{ background: p.color }}
                 />
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--ink-0)',
-                    flex: 1,
-                  }}
-                >
-                  {p.name}
-                </span>
-                <div
-                  style={{
-                    width: 90,
-                    height: 4,
-                    background: 'var(--bg-paper)',
-                    borderRadius: 2,
-                    overflow: 'hidden',
-                  }}
-                >
+                <span className="flex-1 text-12 text-ink-0">{p.name}</span>
+                <div className="h-1 w-[90px] overflow-hidden rounded-xs bg-paper">
                   <div
-                    style={{
-                      width: `${SPEAKER_AIRTIME[i]}%`,
-                      height: '100%',
-                      background: p.color,
-                    }}
+                    className="h-full"
+                    style={{ width: `${SPEAKER_AIRTIME[i]}%`, background: p.color }}
                   />
                 </div>
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 10,
-                    color: 'var(--ink-2)',
-                    width: 32,
-                    textAlign: 'right',
-                  }}
-                >
+                <span className="w-8 text-right font-mono text-10 text-ink-2">
                   {SPEAKER_AIRTIME[i]}%
                 </span>
               </div>
@@ -663,87 +407,33 @@ interface PostMeetingProps {
 
 function PostMeeting({ onClose }: PostMeetingProps) {
   return (
-    <div style={{ padding: '24px 32px', maxWidth: 1100 }}>
-      <div
-        style={{
-          background: 'var(--bg-vellum)',
-          border: '1px solid var(--hairline)',
-          borderRadius: 12,
-          padding: 28,
-          marginBottom: 16,
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            marginBottom: 16,
-          }}
-        >
+    <div className="max-w-[1100px] px-8 py-6">
+      <div className="mb-4 rounded-lg border border-hairline bg-vellum p-7">
+        <div className="mb-4 flex items-center gap-3">
           <Pill tone="moss">
             <Lucide name="check" size={9} /> wrapped · 28:14
           </Pill>
           <Pill tone="fog">just now</Pill>
-          <div style={{ flex: 1 }} />
+          <div className="flex-1" />
           <Btn variant="ghost" size="sm" icon={<Lucide name="x" size={13} />} onClick={onClose} />
         </div>
 
-        <h2
-          style={{
-            margin: 0,
-            fontFamily: 'var(--font-display)',
-            fontSize: 28,
-            fontWeight: 600,
-            letterSpacing: '-0.03em',
-            color: 'var(--ink-0)',
-          }}
-        >
+        <h2 className="m-0 font-display text-28 font-semibold tracking-tighter text-ink-0">
           design crit · onboarding v3
         </h2>
-        <div
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 11,
-            color: 'var(--ink-2)',
-            marginTop: 4,
-          }}
-        >
+        <div className="mt-1 font-mono text-11 text-ink-2">
           ~/brain/Meetings/2026-05-08-design-crit.md · 4 speakers · 312 lines
         </div>
 
-        <div
-          style={{
-            marginTop: 20,
-            display: 'grid',
-            gridTemplateColumns: '1.5fr 1fr',
-            gap: 16,
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--bg-paper)',
-              border: '1px solid var(--hairline)',
-              borderRadius: 8,
-              padding: 18,
-            }}
-          >
-            <Eyebrow style={{ marginBottom: 10 }}>tl;dr</Eyebrow>
-            <p
-              style={{
-                margin: 0,
-                fontFamily: 'var(--font-display)',
-                fontStyle: 'italic',
-                fontSize: 16,
-                color: 'var(--ink-0)',
-                lineHeight: 1.5,
-              }}
-            >
+        <div className="mt-5 grid grid-cols-[1.5fr_1fr] gap-4">
+          <div className="rounded-md border border-hairline bg-paper p-[18px]">
+            <Eyebrow className="mb-[10px]">tl;dr</Eyebrow>
+            <p className="m-0 font-display text-16 italic leading-[1.5] text-ink-0">
               &ldquo;the third onboarding screen is doing too much. split the connector picker out,
               but require at least one connected before showing the dashboard — otherwise the
               welcome state is empty.&rdquo;
             </p>
-            <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+            <div className="mt-4 flex gap-2">
               <Btn
                 variant="primary"
                 size="sm"
@@ -771,29 +461,15 @@ function PostMeeting({ onClose }: PostMeetingProps) {
             </div>
           </div>
 
-          <div
-            style={{
-              background: 'var(--bg-paper)',
-              border: '1px solid var(--hairline)',
-              borderRadius: 8,
-              padding: 18,
-            }}
-          >
-            <Eyebrow style={{ marginBottom: 10 }}>action items · 3</Eyebrow>
+          <div className="rounded-md border border-hairline bg-paper p-[18px]">
+            <Eyebrow className="mb-[10px]">action items · 3</Eyebrow>
             <Action who="jules" text="split connector picker into its own screen" />
             <Action who="mira" text="document 'min one connected' rule" />
             <Action who="you" text="redo welcome state mock by friday" />
           </div>
         </div>
 
-        <div
-          style={{
-            marginTop: 16,
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr',
-            gap: 16,
-          }}
-        >
+        <div className="mt-4 grid grid-cols-3 gap-4">
           <SmallStat label="words" value="3,841" />
           <SmallStat label="speakers" value="4" />
           <SmallStat label="links extracted" value="6" />
@@ -810,42 +486,14 @@ interface ActionProps {
 
 function Action({ who, text }: ActionProps) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 8,
-        padding: '6px 0',
-      }}
-    >
-      <div
-        style={{
-          width: 12,
-          height: 12,
-          borderRadius: 3,
-          border: '1.5px solid var(--ink-3)',
-          flexShrink: 0,
-          marginTop: 3,
-        }}
+    <div className="flex items-start gap-2 py-[6px]">
+      <input
+        type="checkbox"
+        disabled
+        className="mt-[3px] h-3 w-3 flex-shrink-0 cursor-not-allowed appearance-none rounded-sm border-[1.5px] border-ink-3 bg-transparent"
       />
-      <div
-        style={{
-          flex: 1,
-          fontSize: 12,
-          color: 'var(--ink-0)',
-          lineHeight: 1.5,
-        }}
-      >
-        {text}{' '}
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 10,
-            color: 'var(--neon)',
-          }}
-        >
-          @{who}
-        </span>
+      <div className="flex-1 text-12 leading-[1.5] text-ink-0">
+        {text} <span className="font-mono text-10 text-neon">@{who}</span>
       </div>
     </div>
   );
@@ -858,25 +506,9 @@ interface SmallStatProps {
 
 function SmallStat({ label, value }: SmallStatProps) {
   return (
-    <div
-      style={{
-        background: 'var(--bg-paper)',
-        border: '1px solid var(--hairline)',
-        borderRadius: 6,
-        padding: 12,
-      }}
-    >
+    <div className="rounded-r6 border border-hairline bg-paper p-3">
       <Eyebrow>{label}</Eyebrow>
-      <div
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 22,
-          fontWeight: 600,
-          color: 'var(--ink-0)',
-          letterSpacing: '-0.02em',
-          marginTop: 4,
-        }}
-      >
+      <div className="mt-1 font-display text-22 font-semibold tracking-tight-xx text-ink-0">
         {value}
       </div>
     </div>
@@ -886,7 +518,7 @@ function SmallStat({ label, value }: SmallStatProps) {
 // ── History ────────────────────────────────────────────────────────────────
 function MeetingHistory() {
   return (
-    <div style={{ padding: '8px 32px 40px', maxWidth: 1100 }}>
+    <div className="max-w-[1100px] px-8 pb-10 pt-2">
       <Panel
         title="past meetings"
         subtitle="47 in vault"
@@ -902,13 +534,8 @@ function MeetingHistory() {
         }
       >
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '120px minmax(0, 1fr) 80px 80px minmax(0, 1fr)',
-            gap: 12,
-            padding: '4px 8px 8px',
-            borderBottom: '1px solid var(--hairline)',
-          }}
+          className="grid gap-3 border-b border-hairline px-2 pb-2 pt-1"
+          style={{ gridTemplateColumns: '120px minmax(0, 1fr) 80px 80px minmax(0, 1fr)' }}
         >
           <Eyebrow>date</Eyebrow>
           <Eyebrow>title</Eyebrow>
@@ -929,51 +556,16 @@ interface HistoryRowProps {
 }
 
 function HistoryRow({ m }: HistoryRowProps) {
-  const [hover, setHover] = useState(false);
   return (
     <div
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '120px minmax(0, 1fr) 80px 80px minmax(0, 1fr)',
-        gap: 12,
-        alignItems: 'center',
-        padding: '10px 8px',
-        borderRadius: 4,
-        cursor: 'pointer',
-        background: hover ? 'var(--bg-paper)' : 'transparent',
-      }}
+      className="grid cursor-pointer items-center gap-3 rounded-sm bg-transparent px-2 py-[10px] hover:bg-paper"
+      style={{ gridTemplateColumns: '120px minmax(0, 1fr) 80px 80px minmax(0, 1fr)' }}
     >
-      <span
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 11,
-          color: 'var(--ink-2)',
-        }}
-      >
-        {m.date}
-      </span>
-      <span style={{ fontSize: 13, color: 'var(--ink-0)' }}>{m.title}</span>
-      <span
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 11,
-          color: 'var(--ink-1)',
-        }}
-      >
-        {m.dur}
-      </span>
-      <span
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 11,
-          color: 'var(--ink-1)',
-        }}
-      >
-        {m.speakers}
-      </span>
-      <div style={{ display: 'flex', gap: 4 }}>
+      <span className="font-mono text-11 text-ink-2">{m.date}</span>
+      <span className="text-13 text-ink-0">{m.title}</span>
+      <span className="font-mono text-11 text-ink-1">{m.dur}</span>
+      <span className="font-mono text-11 text-ink-1">{m.speakers}</span>
+      <div className="flex gap-1">
         {m.tags.map((t) => (
           <Pill key={t} tone="outline">
             {t}
