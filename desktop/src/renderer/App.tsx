@@ -1,13 +1,35 @@
 import { useEffect } from 'react';
 import { useSettings } from './stores/settings';
+import { useNavigation } from './stores/navigation';
+import { WindowChrome } from './components/WindowChrome';
+import { Sidebar } from './components/Sidebar';
+import { StatusBar } from './components/StatusBar';
+import { Toaster } from './components/Toaster';
+
+function ScreenStub({ name }: { name: string }) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        display: 'grid',
+        placeItems: 'center',
+        color: 'var(--ink-2)',
+        fontFamily: 'var(--font-mono)',
+        fontSize: 14,
+      }}
+    >
+      {name} screen — coming next
+    </div>
+  );
+}
 
 export default function App() {
   const { theme, density, ready, hydrate } = useSettings();
+  const active = useNavigation((s) => s.active);
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
-
   useEffect(() => {
     if (!ready) return;
     document.body.dataset.theme = theme;
@@ -18,9 +40,15 @@ export default function App() {
     return <div className="bg-paper text-ink-2 grid h-full place-items-center">…</div>;
   }
   return (
-    <div className="bg-paper text-ink-0 h-full p-6 font-body">
-      <h1 className="font-display text-4xl tracking-tight">ghostbrain</h1>
-      <p className="text-ink-2 font-mono text-xs uppercase tracking-widest">stores online</p>
-    </div>
+    <WindowChrome>
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <Sidebar />
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <ScreenStub name={active} />
+        </main>
+      </div>
+      <StatusBar />
+      <Toaster />
+    </WindowChrome>
   );
 }
