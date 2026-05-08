@@ -5,10 +5,7 @@ import { resolve } from 'node:path';
 
 export default defineConfig({
   main: {
-    // electron-store v10 is ESM-only; let Vite bundle it into the CJS main
-    // bundle instead of externalising (which would emit a `require()` that
-    // Electron's CJS loader can't resolve against an ESM module).
-    plugins: [externalizeDepsPlugin({ exclude: ['electron-store'] })],
+    plugins: [externalizeDepsPlugin()],
     build: { outDir: 'out/main' },
   },
   preload: {
