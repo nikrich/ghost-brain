@@ -102,7 +102,7 @@ export function ConnectorsScreen() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '32px 1fr 100px 120px 120px 90px',
+              gridTemplateColumns: '32px minmax(0, 1fr) 100px 120px 120px 90px',
               gap: 12,
               padding: '0 14px 8px',
               borderBottom: '1px solid var(--hairline)',
@@ -172,7 +172,7 @@ function ConnectorRow({ c, selected, onClick }: ConnectorRowProps) {
       onMouseLeave={() => setHover(false)}
       style={{
         display: 'grid',
-        gridTemplateColumns: '32px 1fr 100px 120px 120px 90px',
+        gridTemplateColumns: '32px minmax(0, 1fr) 100px 120px 120px 90px',
         gap: 12,
         alignItems: 'center',
         padding: '12px 14px',
@@ -192,13 +192,16 @@ function ConnectorRow({ c, selected, onClick }: ConnectorRowProps) {
           filter: c.state === 'off' ? 'grayscale(1)' : 'none',
         }}
       />
-      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2, minWidth: 0 }}>
         <span style={{ fontSize: 13, color: 'var(--ink-0)', fontWeight: 500 }}>{c.name}</span>
         <span
           style={{
             fontFamily: 'var(--font-mono)',
             fontSize: 10,
             color: 'var(--ink-2)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
         >
           {c.account}

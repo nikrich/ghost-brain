@@ -904,7 +904,7 @@ function MeetingHistory() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '120px 1fr 80px 80px 1fr',
+            gridTemplateColumns: '120px minmax(0, 1fr) 80px 80px minmax(0, 1fr)',
             gap: 12,
             padding: '4px 8px 8px',
             borderBottom: '1px solid var(--hairline)',
@@ -936,7 +936,7 @@ function HistoryRow({ m }: HistoryRowProps) {
       onMouseLeave={() => setHover(false)}
       style={{
         display: 'grid',
-        gridTemplateColumns: '120px 1fr 80px 80px 1fr',
+        gridTemplateColumns: '120px minmax(0, 1fr) 80px 80px minmax(0, 1fr)',
         gap: 12,
         alignItems: 'center',
         padding: '10px 8px',
