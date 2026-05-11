@@ -109,15 +109,25 @@ class GmailConnector(Connector):
         events = [e for e in events if not _is_denied(e, self.denylist)]
         denied = raw_count - len(events)
 
+        # Hard-drop Gmail's own promotional category before the LLM gate.
+        # Gmail's classifier is reliable for retail / marketing / sales blasts,
+        # and the LLM gate has been observed letting these slip through
+        # despite the prompt explicitly excluding them. If a user wants to
+        # whitelist a sender that lands in Promotions, they can move the
+        # thread to Primary in Gmail and it'll show up next fetch.
+        before_promo = len(events)
+        events = [e for e in events if not _is_promotional(e)]
+        promotional = before_promo - len(events)
+
         if self.relevance_enabled:
             events, dropped_by_llm = self._apply_relevance_gate(events)
         else:
             dropped_by_llm = 0
 
         log.info(
-            "gmail fetch: %d kept (%d denylisted, %d dropped by LLM gate, "
-            "%d initial)",
-            len(events), denied, dropped_by_llm, raw_count,
+            "gmail fetch: %d kept (%d denylisted, %d in Promotions, "
+            "%d dropped by LLM gate, %d initial)",
+            len(events), denied, promotional, dropped_by_llm, raw_count,
         )
         return events
 
@@ -196,6 +206,22 @@ class GmailConnector(Connector):
 # ---------------------------------------------------------------------------
 # Pure helpers (heavily tested with mocks)
 # ---------------------------------------------------------------------------
+
+
+_PROMOTIONAL_LABELS = {"CATEGORY_PROMOTIONS"}
+
+
+def _is_promotional(event: dict) -> bool:
+    """True if Gmail classified the thread as a promotion.
+
+    Gmail's own categoriser does this well — using it as a hard pre-filter
+    means we don't pay the LLM gate's cost for obvious marketing blasts
+    AND we don't risk the LLM letting one through.
+    """
+    labels = (event.get("metadata") or {}).get("labels") or []
+    if not isinstance(labels, list):
+        return False
+    return any(label in _PROMOTIONAL_LABELS for label in labels)
 
 
 def _is_denied(event: dict, denylist: list[str]) -> bool:

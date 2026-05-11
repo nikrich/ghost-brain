@@ -7,6 +7,7 @@ import { Eyebrow } from '../components/Eyebrow';
 import { Panel } from '../components/Panel';
 import { Ghost } from '../components/Ghost';
 import { useMeeting } from '../stores/meeting';
+import { useNavigation } from '../stores/navigation';
 import { useNoteView } from '../stores/note-view';
 import { stub } from '../stores/toast';
 import { useAgenda, useMeetings } from '../lib/api/hooks';
@@ -155,6 +156,7 @@ interface PreMeetingProps {
 }
 
 function PreMeeting({ onStart, event }: PreMeetingProps) {
+  const setActive = useNavigation((s) => s.setActive);
   const startAt = parseAgendaTime(event);
   const rel = relativeMinutes(startAt);
   const endLabel = startAt
@@ -224,7 +226,12 @@ function PreMeeting({ onStart, event }: PreMeetingProps) {
             >
               start recording
             </Btn>
-            <Btn variant="ghost" size="lg" onClick={() => stub(4)}>
+            <Btn
+              variant="ghost"
+              size="lg"
+              icon={<Lucide name="settings-2" size={14} />}
+              onClick={() => setActive('settings')}
+            >
               configure…
             </Btn>
           </div>
@@ -313,13 +320,17 @@ interface AudioSourceProps {
 }
 
 function AudioSource({ icon, label, sub, active }: AudioSourceProps) {
+  // Read-only — devices are auto-detected by the recorder (BlackHole + mic
+  // from avfoundation). Source picker is out of scope for now; this strip
+  // shows what *will* be captured.
   return (
     <div
-      className={`mb-1 flex cursor-pointer items-center gap-[10px] rounded-r6 border px-[10px] py-2 ${
+      className={`mb-1 flex items-center gap-[10px] rounded-r6 border px-[10px] py-2 ${
         active
           ? 'border-neon/20 bg-neon/[0.08] opacity-100'
           : 'border-hairline bg-transparent opacity-55'
       }`}
+      title="auto-detected by the recorder"
     >
       <Lucide name={icon} size={13} color={active ? 'var(--neon)' : 'var(--ink-2)'} />
       <div className="flex-1 leading-[1.2]">

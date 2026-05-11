@@ -63,7 +63,7 @@ export function useCaptures(opts?: { limit?: number; source?: string }) {
 export function useCapture(id: string | null) {
   return useQuery({
     queryKey: ['capture', id],
-    queryFn: () => get<Capture>(`/v1/captures/${id}`),
+    queryFn: () => get<Capture>(`/v1/captures/${encodeURIComponent(id!)}`),
     enabled: id !== null,
     staleTime: 60_000,
   });
