@@ -6,6 +6,17 @@ import { settingsSchema } from '../shared/settings-schema';
 import type { Settings } from '../shared/types';
 import { loadInitialState, attachStatePersistence } from './window-state';
 import { buildAppMenu } from './menu';
+import { Sidecar } from './sidecar';
+import { forward } from './api-forwarder';
+
+// Repo root: in dev, that's one level up from the desktop/ project dir
+// (app.getAppPath() resolves to the desktop/ folder). In prod (Phase 2 bundles
+// the sidecar as a binary), this changes.
+function repoRoot(): string {
+  return join(app.getAppPath(), '..');
+}
+
+const sidecar = new Sidecar(repoRoot());
 
 function createWindow() {
   const isMac = process.platform === 'darwin';
@@ -72,13 +83,69 @@ ipcMain.handle('gb:shell:openPath', async (_e, p: unknown) => {
   return { ok: true };
 });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   buildAppMenu();
   createWindow();
+  try {
+    await sidecar.start();
+    BrowserWindow.getAllWindows()[0]?.webContents.send('gb:sidecar:ready');
+  } catch (err) {
+    BrowserWindow.getAllWindows()[0]?.webContents.send('gb:sidecar:failed', {
+      reason: err instanceof Error ? err.message : String(err),
+    });
+  }
 });
+
+sidecar.on('ready', () => {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send('gb:sidecar:ready');
+  }
+});
+
+sidecar.on('failed', (info: { reason: string }) => {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send('gb:sidecar:failed', info);
+  }
+});
+
+let sidecarStopped = false;
+app.on('before-quit', (event) => {
+  if (!sidecarStopped) {
+    event.preventDefault();
+    sidecarStopped = true;
+    sidecar.stop().finally(() => app.quit());
+  }
+});
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
+
+ipcMain.handle(
+  'gb:api:request',
+  async (_e, method: unknown, path: unknown, body: unknown) => {
+    if (typeof method !== 'string' || typeof path !== 'string') {
+      return { ok: false, error: 'Invalid request shape' };
+    }
+    const m = method.toUpperCase();
+    if (m !== 'GET' && m !== 'POST') {
+      return { ok: false, error: 'Method not allowed' };
+    }
+    if (!path.startsWith('/v1/')) {
+      return { ok: false, error: 'Path not allowed (must start with /v1/)' };
+    }
+    return forward(sidecar, m, path, body);
+  },
+);
+
+ipcMain.handle('gb:sidecar:retry', async () => {
+  try {
+    await sidecar.start();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
 });
