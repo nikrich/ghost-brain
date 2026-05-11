@@ -144,3 +144,15 @@ export interface StartRecordingRequest {
   title?: string;
   context?: string;
 }
+
+export interface RecorderSettings {
+  enabled: boolean;
+  excluded_titles: string[];
+  manual_context: string;
+}
+
+export interface UpdateRecorderSettings {
+  enabled?: boolean;
+  excluded_titles?: string[];
+  manual_context?: string;
+}

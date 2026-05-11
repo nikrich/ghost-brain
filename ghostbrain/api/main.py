@@ -10,6 +10,7 @@ from ghostbrain.api.routes import daily as daily_routes
 from ghostbrain.api.routes import notes as notes_routes
 from ghostbrain.api.routes import recorder as recorder_routes
 from ghostbrain.api.routes import search as search_routes
+from ghostbrain.api.routes import settings as settings_routes
 from ghostbrain.api.routes import meetings as meetings_routes
 from ghostbrain.api.routes import suggestions as suggestions_routes
 from ghostbrain.api.routes import vault as vault_routes
@@ -34,6 +35,7 @@ def create_app(token: str) -> FastAPI:
     app.include_router(notes_routes.router)
     app.include_router(recorder_routes.router)
     app.include_router(search_routes.router)
+    app.include_router(settings_routes.router)
     app.include_router(activity_routes.router)
     app.include_router(suggestions_routes.router)
     return app

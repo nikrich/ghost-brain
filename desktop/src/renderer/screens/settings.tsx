@@ -5,6 +5,7 @@ import { Lucide } from '../components/Lucide';
 import { Toggle } from '../components/Toggle';
 import { Ghost } from '../components/Ghost';
 import { useSettings } from '../stores/settings';
+import { useRecorderSettings, useUpdateRecorderSettings } from '../lib/api/hooks';
 import { toast } from '../stores/toast';
 import { HOTKEYS, format as formatShortcut } from '../lib/shortcuts';
 import type {
@@ -228,38 +229,56 @@ function PrivacySettings() {
 }
 
 function MeetingSettings() {
-  const autoRecord = useSettings((s) => s.autoRecordFromCalendar);
-  const diarize = useSettings((s) => s.diarizeSpeakers);
-  const extract = useSettings((s) => s.extractActionItems);
   const retention = useSettings((s) => s.audioRetention);
   const model = useSettings((s) => s.transcriptModel);
   const setSetting = useSettings((s) => s.set);
+  const recorderQuery = useRecorderSettings();
+  const updateRecorder = useUpdateRecorderSettings();
+  const recorder = recorderQuery.data;
+
+  const setEnabled = (v: boolean) =>
+    void updateRecorder.mutateAsync({ enabled: v }).catch((e) =>
+      toast.error(e instanceof Error ? e.message : 'failed to update auto-record'),
+    );
+  const setManualContext = (v: string) =>
+    void updateRecorder.mutateAsync({ manual_context: v }).catch((e) =>
+      toast.error(e instanceof Error ? e.message : 'failed to update manual context'),
+    );
+
   return (
     <div>
       <SectionHeader title="meetings" sub="how ghostbrain records, transcribes, and summarizes." />
       <SettingRow
         label="auto-record from calendar"
-        sub="meetings tagged ⏺ in your calendar are auto-recorded"
+        sub="when on, calendar events that pass the recorder policy auto-record"
         control={
-          <Toggle
-            on={autoRecord}
-            onChange={(v) => void trySet(setSetting, 'autoRecordFromCalendar', v)}
-          />
+          recorder ? (
+            <Toggle on={recorder.enabled} onChange={setEnabled} />
+          ) : (
+            <span className="font-mono text-10 text-ink-3">…</span>
+          )
         }
       />
       <SettingRow
-        label="diarize speakers"
-        sub="separate who-said-what in the transcript"
-        control={<Toggle on={diarize} onChange={(v) => void trySet(setSetting, 'diarizeSpeakers', v)} />}
-      />
-      <SettingRow
-        label="extract action items"
-        sub="ghostbrain pulls todos automatically"
-        control={<Toggle on={extract} onChange={(v) => void trySet(setSetting, 'extractActionItems', v)} />}
+        label="manual recording context"
+        sub="where ad-hoc transcripts get filed in the vault"
+        control={
+          <select
+            className={selectClass}
+            value={recorder?.manual_context ?? 'personal'}
+            disabled={!recorder}
+            onChange={(e) => setManualContext(e.target.value)}
+          >
+            <option value="personal">personal</option>
+            <option value="sanlam">sanlam</option>
+            <option value="codeship">codeship</option>
+            <option value="reducedrecipes">reducedrecipes</option>
+          </select>
+        }
       />
       <SettingRow
         label="audio retention"
-        sub="how long to keep raw audio after transcription"
+        sub="how long to keep raw audio after transcription · UI only for now"
         control={
           <select
             className={selectClass}
@@ -275,7 +294,7 @@ function MeetingSettings() {
       />
       <SettingRow
         label="transcript model"
-        sub="whisper · runs locally"
+        sub="whisper · runs locally · UI only for now"
         control={
           <select
             className={selectClass}

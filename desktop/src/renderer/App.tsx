@@ -14,6 +14,7 @@ import { MeetingsScreen } from './screens/meetings';
 import { CaptureScreen } from './screens/capture';
 import { VaultScreen } from './screens/vault';
 import { DailyScreen } from './screens/daily';
+import { SetupScreen } from './screens/setup';
 import { SettingsScreen } from './screens/settings';
 
 export default function App() {
@@ -66,6 +67,7 @@ export default function App() {
           {active === 'capture' && <CaptureScreen />}
           {active === 'vault' && <VaultScreen />}
           {active === 'daily' && <DailyScreen />}
+          {active === 'setup' && <SetupScreen />}
           {active === 'settings' && <SettingsScreen />}
         </main>
       </div>

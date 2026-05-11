@@ -7,6 +7,7 @@ export type ScreenId =
   | 'capture'
   | 'vault'
   | 'daily'
+  | 'setup'
   | 'settings';
 
 interface NavState {

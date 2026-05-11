@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
   ActivityRow,
@@ -10,10 +10,12 @@ import type {
   DailyPage,
   MeetingsPage,
   Note,
+  RecorderSettings,
   RecorderStatus,
   SearchResponse,
   StartRecordingRequest,
   Suggestion,
+  UpdateRecorderSettings,
   VaultStats,
 } from '../../../shared/api-types';
 import { get, post } from './client';
@@ -164,5 +166,24 @@ export function useStopRecording() {
 export function useClearRecording() {
   return useMutation({
     mutationFn: () => post<RecorderStatus>('/v1/recorder/clear'),
+  });
+}
+
+export function useRecorderSettings() {
+  return useQuery({
+    queryKey: ['settings', 'recorder'],
+    queryFn: () => get<RecorderSettings>('/v1/settings/recorder'),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useUpdateRecorderSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: UpdateRecorderSettings) =>
+      post<RecorderSettings>('/v1/settings/recorder', vars),
+    onSuccess: (data) => {
+      qc.setQueryData(['settings', 'recorder'], data);
+    },
   });
 }
