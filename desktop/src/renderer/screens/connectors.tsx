@@ -1,11 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { TopBar } from '../components/TopBar';
 import { Btn } from '../components/Btn';
 import { Lucide } from '../components/Lucide';
 import { Pill } from '../components/Pill';
 import { Eyebrow } from '../components/Eyebrow';
 import { Toggle } from '../components/Toggle';
-import { CONNECTORS, type Connector, type ConnectorState } from '../lib/mocks/connectors';
+import type { Connector, ConnectorDetail, ConnectorState } from '../../shared/api-types';
+import { useConnector, useConnectors } from '../lib/api/hooks';
+import { SkeletonRows } from '../components/SkeletonRows';
+import { PanelEmpty } from '../components/PanelEmpty';
+import { PanelError } from '../components/PanelError';
 import { stub } from '../stores/toast';
 
 type Filter = 'all' | ConnectorState;
@@ -20,11 +24,23 @@ const filterLabel = (f: Filter): string =>
 // align across them.
 const ROW_GRID = '32px minmax(0, 1fr) 100px 120px 120px 90px';
 
+const connectorIconSrc = (id: string): string => `/assets/connectors/${id}.svg`;
+
 export function ConnectorsScreen() {
-  const [selectedId, setSelectedId] = useState<string>(CONNECTORS[0]!.id);
+  const connectors = useConnectors();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
-  const filtered = CONNECTORS.filter((c) => filter === 'all' || c.state === filter);
-  const selected = CONNECTORS.find((c) => c.id === selectedId)!;
+
+  // Default selection to first connector once data arrives
+  useEffect(() => {
+    if (selectedId === null && connectors.data && connectors.data.length > 0) {
+      setSelectedId(connectors.data[0]!.id);
+    }
+  }, [connectors.data, selectedId]);
+
+  const selected = useConnector(selectedId);
+  const filtered =
+    connectors.data?.filter((c) => filter === 'all' || c.state === filter) ?? [];
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-paper">
@@ -75,34 +91,69 @@ export function ConnectorsScreen() {
             ))}
           </div>
 
-          {/* table header */}
-          <div
-            className="grid gap-3 border-b border-hairline px-[14px] pb-2"
-            style={{ gridTemplateColumns: ROW_GRID }}
-          >
-            <div />
-            <Eyebrow>app</Eyebrow>
-            <Eyebrow className="text-right">indexed</Eyebrow>
-            <Eyebrow>last sync</Eyebrow>
-            <Eyebrow>throughput</Eyebrow>
-            <Eyebrow className="text-right">status</Eyebrow>
-          </div>
+          {connectors.isLoading && <SkeletonRows count={6} height={48} />}
+          {connectors.isError && (
+            <PanelError
+              message={
+                connectors.error instanceof Error
+                  ? connectors.error.message
+                  : 'failed to load connectors'
+              }
+              onRetry={() => connectors.refetch()}
+            />
+          )}
+          {connectors.data && connectors.data.length === 0 && (
+            <PanelEmpty icon="plug" message="no connectors configured yet" />
+          )}
+          {connectors.data && connectors.data.length > 0 && (
+            <>
+              {/* table header */}
+              <div
+                className="grid gap-3 border-b border-hairline px-[14px] pb-2"
+                style={{ gridTemplateColumns: ROW_GRID }}
+              >
+                <div />
+                <Eyebrow>app</Eyebrow>
+                <Eyebrow className="text-right">indexed</Eyebrow>
+                <Eyebrow>last sync</Eyebrow>
+                <Eyebrow>throughput</Eyebrow>
+                <Eyebrow className="text-right">status</Eyebrow>
+              </div>
 
-          <div className="mt-[6px] flex flex-col gap-[2px]">
-            {filtered.map((c) => (
-              <ConnectorRow
-                key={c.id}
-                c={c}
-                selected={selectedId === c.id}
-                onClick={() => setSelectedId(c.id)}
-              />
-            ))}
-            <AddConnectorRow />
-          </div>
+              <div className="mt-[6px] flex flex-col gap-[2px]">
+                {filtered.map((c) => (
+                  <ConnectorRow
+                    key={c.id}
+                    c={c}
+                    selected={selectedId === c.id}
+                    onClick={() => setSelectedId(c.id)}
+                  />
+                ))}
+                <AddConnectorRow />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Detail panel */}
-        <ConnectorDetail c={selected} />
+        {selected.isLoading && (
+          <aside className="border-l border-hairline bg-vellum p-6">
+            <SkeletonRows count={4} />
+          </aside>
+        )}
+        {selected.isError && (
+          <aside className="border-l border-hairline bg-vellum p-6">
+            <PanelError
+              message={
+                selected.error instanceof Error
+                  ? selected.error.message
+                  : 'failed to load detail'
+              }
+              onRetry={() => selected.refetch()}
+            />
+          </aside>
+        )}
+        {selected.data && <ConnectorDetailPanel c={selected.data} />}
       </div>
     </div>
   );
@@ -142,16 +193,16 @@ function ConnectorRow({ c, selected, onClick }: ConnectorRowProps) {
       style={{ gridTemplateColumns: ROW_GRID }}
     >
       <img
-        src={'/' + c.src}
+        src={connectorIconSrc(c.id)}
         alt=""
         width={22}
         height={22}
         className={c.state === 'off' ? 'grayscale' : ''}
       />
       <div className="flex min-w-0 flex-col leading-[1.2]">
-        <span className="text-13 font-medium text-ink-0">{c.name}</span>
+        <span className="text-13 font-medium text-ink-0">{c.displayName}</span>
         <span className="overflow-hidden text-ellipsis whitespace-nowrap font-mono text-10 text-ink-2">
-          {c.account}
+          {c.account ?? ''}
         </span>
       </div>
       <span className="text-right font-mono text-11 text-ink-1">
@@ -160,9 +211,9 @@ function ConnectorRow({ c, selected, onClick }: ConnectorRowProps) {
       <span
         className={`font-mono text-11 ${c.state === 'err' ? 'text-oxblood' : 'text-ink-2'}`}
       >
-        {c.last}
+        {c.lastSyncAt ?? 'never'}
       </span>
-      <span className="font-mono text-11 text-ink-2">{c.throughput}</span>
+      <span className="font-mono text-11 text-ink-2">{c.throughput ?? ''}</span>
       <div className="flex justify-end">
         <Pill tone={TONES[c.state]}>{STATE_LABELS[c.state]}</Pill>
       </div>
@@ -180,29 +231,23 @@ function AddConnectorRow() {
 }
 
 interface ConnectorDetailProps {
-  c: Connector;
+  c: ConnectorDetail;
 }
 
-function ConnectorDetail({ c }: ConnectorDetailProps) {
+function ConnectorDetailPanel({ c }: ConnectorDetailProps) {
   return (
     <aside className="flex flex-col overflow-y-auto border-l border-hairline bg-vellum">
       {/* hero */}
       <div className="gb-noise relative overflow-hidden border-b border-hairline p-6">
-        <div
-          className="pointer-events-none absolute -right-10 -top-10 h-[200px] w-[200px]"
-          style={{
-            background: `radial-gradient(circle, ${c.color}22 0%, transparent 60%)`,
-          }}
-        />
         <div className="relative mb-[14px] flex items-center gap-[14px]">
           <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-hairline bg-paper">
-            <img src={'/' + c.src} alt="" width={32} height={32} />
+            <img src={connectorIconSrc(c.id)} alt="" width={32} height={32} />
           </div>
           <div className="flex-1">
             <div className="font-display text-22 font-semibold tracking-tight-x text-ink-0">
-              {c.name}
+              {c.displayName}
             </div>
-            <div className="mt-[2px] font-mono text-10 text-ink-2">{c.account}</div>
+            <div className="mt-[2px] font-mono text-10 text-ink-2">{c.account ?? ''}</div>
           </div>
         </div>
 
@@ -215,7 +260,7 @@ function ConnectorDetail({ c }: ConnectorDetailProps) {
               icon={<Lucide name="link" size={13} color="#0E0F12" />}
               onClick={() => stub(3)}
             >
-              connect {c.name}
+              connect {c.displayName}
             </Btn>
           )}
           {c.state === 'err' && (
@@ -258,9 +303,11 @@ function ConnectorDetail({ c }: ConnectorDetailProps) {
           <div className="flex gap-[10px] rounded-r6 border border-oxblood/30 bg-oxblood/10 p-3">
             <Lucide name="alert-triangle" size={14} color="var(--oxblood)" />
             <div className="flex-1">
-              <div className="text-12 font-medium text-oxblood">oauth token expired</div>
+              <div className="text-12 font-medium text-oxblood">
+                {c.error ?? 'connector error'}
+              </div>
               <div className="mt-[2px] text-11 leading-[1.4] text-ink-1">
-                github stopped accepting our token 2 days ago. one click and it&rsquo;s quiet again.
+                one click and it&rsquo;s quiet again.
               </div>
             </div>
           </div>
@@ -271,9 +318,9 @@ function ConnectorDetail({ c }: ConnectorDetailProps) {
             <Stat
               label="items"
               value={c.state === 'off' ? '—' : c.count.toLocaleString()}
-              delta={c.throughput}
+              delta={c.throughput ?? ''}
             />
-            <Stat label="last sync" value={c.last} delta="auto · every 5m" />
+            <Stat label="last sync" value={c.lastSyncAt ?? 'never'} delta="auto · every 5m" />
           </div>
         </DetailBlock>
 
@@ -304,9 +351,7 @@ function ConnectorDetail({ c }: ConnectorDetailProps) {
         <DetailBlock label="vault destination">
           <div className="flex items-center gap-[10px] rounded-r6 border border-hairline bg-paper px-3 py-[10px]">
             <Lucide name="folder" size={13} color="var(--ink-2)" />
-            <span className="flex-1 font-mono text-11 text-ink-0">
-              ~/brain/sources/{c.name}
-            </span>
+            <span className="flex-1 font-mono text-11 text-ink-0">{c.vaultDestination}</span>
             <Lucide name="external-link" size={11} color="var(--ink-3)" />
           </div>
         </DetailBlock>
