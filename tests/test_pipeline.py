@@ -128,6 +128,9 @@ def test_missing_transcript_still_processes_event(vault: Path) -> None:
                return_value=[]) as ex:
         summary = pipeline.process_event(event)
 
-    assert summary["context"] == "personal"
-    # No transcript → no excerpt → no extractor call.
+    # Subagent sessions (and any other case where the JSONL is gone before the
+    # worker reads the queue) used to produce useless stub notes with just a
+    # title. The pipeline now drops them.
+    assert summary["status"] == "skipped"
+    assert summary["reason"] == "missing_transcript"
     ex.assert_not_called()

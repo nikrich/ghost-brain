@@ -52,12 +52,24 @@ def process_event(event: dict) -> dict:
 
     if event.get("source") in CLAUDE_SOURCES:
         digest = _load_session(event)
-        if digest is not None:
-            excerpt = digest.as_excerpt()
-            body = _build_session_body(event, digest, excerpt)
-            event.setdefault("metadata", {})
-            if digest.cwd:
-                event["metadata"].setdefault("projectPath", digest.cwd)
+        if digest is None:
+            # Subagent sessions fire SessionEnd just like primary sessions, but
+            # Claude Code rotates/deletes their JSONL before the worker reads
+            # the queue file. Writing a stub note with just the title produces
+            # dozens of useless "Claude Code session XXXX" inbox entries every
+            # day. Drop them.
+            log.info("claude-code event=%s has no readable transcript; skipping",
+                     event.get("id"))
+            return {
+                "status": "skipped",
+                "reason": "missing_transcript",
+                "event_id": event.get("id"),
+            }
+        excerpt = digest.as_excerpt()
+        body = _build_session_body(event, digest, excerpt)
+        event.setdefault("metadata", {})
+        if digest.cwd:
+            event["metadata"].setdefault("projectPath", digest.cwd)
 
     decision = route_event(
         event,
