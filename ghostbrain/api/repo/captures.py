@@ -107,6 +107,10 @@ def _parse_inbox_file(path: Path) -> tuple[dict, dict] | None:
 
     context = fm.get("context")
     context_str = str(context) if isinstance(context, str) else None
+    try:
+        rel_path = str(path.resolve().relative_to(vault_path().resolve()))
+    except ValueError:
+        rel_path = None
     summary = {
         "id": capture_id,
         "source": source,
@@ -116,6 +120,7 @@ def _parse_inbox_file(path: Path) -> tuple[dict, dict] | None:
         "tags": [str(fm["type"])] if "type" in fm else [],
         "unread": _is_recent(captured_at) if captured_at else False,
         "capturedAt": captured_at,
+        "path": rel_path,
     }
     return summary, {"content": post.content, "metadata": fm}
 

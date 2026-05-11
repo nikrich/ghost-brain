@@ -30,6 +30,7 @@ import { PanelError } from '../components/PanelError';
 
 export function TodayScreen() {
   const setActive = useNavigation((s) => s.setActive);
+  const openNote = useNoteView((s) => s.open);
   const stats = useVaultStats();
   const agenda = useAgenda();
   const activity = useRecentActivity();
@@ -346,6 +347,7 @@ export function TodayScreen() {
                 title={c.title}
                 snippet={c.snippet}
                 from={c.from}
+                onClick={c.path ? () => openNote(c.path!) : undefined}
               />
             ))}
           </Panel>
@@ -568,24 +570,35 @@ interface CaptureItemProps {
   title: CaptureSummary['title'];
   snippet: CaptureSummary['snippet'];
   from: CaptureSummary['from'];
+  onClick?: () => void;
 }
 
-function CaptureItem({ source, title, snippet, from }: CaptureItemProps) {
-  return (
-    <div
-      className="cursor-pointer rounded-r6 px-2 py-[10px]"
-      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-paper)')}
-      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-    >
+function CaptureItem({ source, title, snippet, from, onClick }: CaptureItemProps) {
+  const content = (
+    <>
       <div className="mb-1 flex items-center gap-2">
         <img src={`/assets/connectors/${source}.svg`} alt="" className="h-3 w-3" />
-        <span className="text-12 font-medium text-ink-0">{title}</span>
-        <span className="ml-auto font-mono text-9 text-ink-3">{from}</span>
+        <span className="flex-1 truncate text-12 font-medium text-ink-0 text-left">{title}</span>
+        <span className="font-mono text-9 text-ink-3">{from}</span>
       </div>
-      <div className="font-display text-13 italic leading-[1.4] text-ink-1">
+      <div className="font-display text-13 italic leading-[1.4] text-ink-1 text-left">
         &ldquo;{snippet}&rdquo;
       </div>
-    </div>
+    </>
+  );
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full cursor-pointer rounded-r6 px-2 py-[10px] hover:bg-paper"
+      >
+        {content}
+      </button>
+    );
+  }
+  return (
+    <div className="rounded-r6 px-2 py-[10px]">{content}</div>
   );
 }
 

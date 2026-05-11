@@ -37,6 +37,7 @@ export interface CaptureSummary {
   tags: string[];
   unread: boolean;
   capturedAt: string;
+  path: string | null;
 }
 
 export interface Capture extends CaptureSummary {

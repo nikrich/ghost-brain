@@ -13,6 +13,7 @@ class CaptureSummary(BaseModel):
     tags: list[str]
     unread: bool
     capturedAt: str
+    path: str | None = None
 
 
 class Capture(CaptureSummary):
