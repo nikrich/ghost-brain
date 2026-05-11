@@ -23,6 +23,7 @@ dependencies = [
     "google-api-python-client>=2.100",
     "google-auth-oauthlib>=1.2",
     "slack-sdk>=3.27",
+    "markdownify>=0.13",
 ]
 
 [project.optional-dependencies]
@@ -59,6 +60,7 @@ ghostbrain-slack-fetch = "ghostbrain.connectors.slack.__main__:main"
 ghostbrain-slack-token-add = "ghostbrain.connectors.slack.token_cli:main"
 ghostbrain-transcribe = "ghostbrain.recorder.main:main"
 ghostbrain-recorder = "ghostbrain.recorder.daemon_cli:main"
+ghostbrain-recorder-recover = "ghostbrain.recorder.recover_cli:main"
 ghostbrain-metrics = "ghostbrain.metrics.main:main"
 ghostbrain-semantic-refresh = "ghostbrain.semantic.main:main"
 

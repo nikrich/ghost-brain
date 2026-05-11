@@ -29,6 +29,7 @@ from ghostbrain.connectors.calendar.macos import MacosCalendarConnector
 from ghostbrain.paths import queue_dir, state_dir, vault_path
 from ghostbrain.recorder import audio_capture, audio_switcher, state as state_mod
 from ghostbrain.recorder.linker import link_transcript
+from ghostbrain.recorder.manual import run_recovery_pass as manual_recovery_pass
 from ghostbrain.recorder.policy import RecorderPolicy, should_record
 from ghostbrain.recorder.transcribe import TranscribeError, transcribe
 from ghostbrain.worker.audit import audit_log
@@ -148,7 +149,17 @@ def run_once(config: DaemonConfig, state: state_mod.RecorderState) -> None:
         else:
             return
 
-    # No active recording — look for a meeting to start.
+    # No active recording — first sweep up any orphan manual recordings,
+    # then look for a calendar event to start.
+    try:
+        recovered = manual_recovery_pass()
+    except Exception:  # noqa: BLE001
+        log.exception("manual recovery pass failed")
+    else:
+        for path in recovered:
+            audit_log("manual_recording_recovered", str(path))
+            log.info("recovered manual recording: %s", path.name)
+
     candidate = _next_eligible_event(config, state, now)
     if candidate is None:
         return
