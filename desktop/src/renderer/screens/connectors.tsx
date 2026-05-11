@@ -11,6 +11,7 @@ import { SkeletonRows } from '../components/SkeletonRows';
 import { PanelEmpty } from '../components/PanelEmpty';
 import { PanelError } from '../components/PanelError';
 import { stub } from '../stores/toast';
+import { formatRelativeTime } from '../lib/format';
 
 type Filter = 'all' | ConnectorState;
 
@@ -210,8 +211,9 @@ function ConnectorRow({ c, selected, onClick }: ConnectorRowProps) {
       </span>
       <span
         className={`font-mono text-11 ${c.state === 'err' ? 'text-oxblood' : 'text-ink-2'}`}
+        title={c.lastSyncAt ?? undefined}
       >
-        {c.lastSyncAt ?? 'never'}
+        {formatRelativeTime(c.lastSyncAt)}
       </span>
       <span className="font-mono text-11 text-ink-2">{c.throughput ?? ''}</span>
       <div className="flex justify-end">
@@ -320,7 +322,11 @@ function ConnectorDetailPanel({ c }: ConnectorDetailProps) {
               value={c.state === 'off' ? '—' : c.count.toLocaleString()}
               delta={c.throughput ?? ''}
             />
-            <Stat label="last sync" value={c.lastSyncAt ?? 'never'} delta="auto · every 5m" />
+            <Stat
+              label="last sync"
+              value={formatRelativeTime(c.lastSyncAt)}
+              delta="auto · every 5m"
+            />
           </div>
         </DetailBlock>
 

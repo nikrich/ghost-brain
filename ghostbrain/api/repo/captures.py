@@ -1,6 +1,7 @@
 """Capture inbox from <vault>/00-inbox/raw/<source>/*.md."""
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -38,17 +39,43 @@ def _format_from(context: str | None, captured_at: str) -> str:
     return context or time_part or ""
 
 
+_SLACK_USER_MENTION = re.compile(r"<@[A-Z0-9]+\|([^>]+)>")
+_SLACK_CHAN_MENTION = re.compile(r"<#[A-Z0-9]+\|([^>]+)>")
+_SLACK_LINK = re.compile(r"<(https?://[^|>]+)\|([^>]+)>")
+# Bold key-value header like `**Source:** claude-code` or `**Key**: value`
+# that some connectors prepend before (or instead of) real body content.
+# Allows the colon either inside the bold span or just after it.
+_BOLD_KV_LINE = re.compile(r"^\s*\*\*[\w\s]{1,30}:?\*\*\s*:?\s")
+
+
+def _clean_slack_text(text: str) -> str:
+    """Replace slack mention/link wire-syntax with readable forms."""
+    text = _SLACK_USER_MENTION.sub(r"@\1", text)
+    text = _SLACK_CHAN_MENTION.sub(r"#\1", text)
+    text = _SLACK_LINK.sub(r"\2", text)
+    return text
+
+
 def _snippet_from_body(body: str, limit: int = 200) -> str:
+    """First non-trivial prose line from the body.
+
+    Skips: empty lines, markdown headings, horizontal rules, and bold
+    key-value header lines like `**Source:** x` that several connectors
+    prepend before the real content.
+    """
     for raw in body.splitlines():
         line = raw.strip()
         if not line:
             continue
         if line.startswith("#"):
             continue
-        # Strip light markdown formatting.
-        line = line.lstrip("*-> ")
-        if line:
-            return line[:limit]
+        if line.startswith("---") or line.startswith("==="):
+            continue
+        if _BOLD_KV_LINE.match(line):
+            continue
+        cleaned = line.lstrip("*-> ")
+        if cleaned:
+            return cleaned[:limit]
     return ""
 
 
@@ -64,14 +91,27 @@ def _parse_inbox_file(path: Path) -> tuple[dict, dict] | None:
     if not source:
         return None
     captured_at = str(fm.get("ingestedAt") or fm.get("created") or "")
-    title = str(fm.get("title", path.stem))
+    title = str(fm.get("title") or path.stem)
+    snippet = _snippet_from_body(post.content)
+
+    # Source-specific cosmetic fixes. Stored files are untouched; this is
+    # render-time cleanup so the inbox UI shows readable text instead of
+    # raw connector wire-syntax.
+    if source == "slack":
+        title = _clean_slack_text(title)
+        snippet = _clean_slack_text(snippet)
+    elif source == "claude-code" and not snippet:
+        project_path = fm.get("projectPath")
+        if isinstance(project_path, str) and project_path:
+            snippet = Path(project_path).name
+
     context = fm.get("context")
     context_str = str(context) if isinstance(context, str) else None
     summary = {
         "id": capture_id,
         "source": source,
         "title": title,
-        "snippet": _snippet_from_body(post.content),
+        "snippet": snippet,
         "from": _format_from(context_str, captured_at),
         "tags": [str(fm["type"])] if "type" in fm else [],
         "unread": _is_recent(captured_at) if captured_at else False,

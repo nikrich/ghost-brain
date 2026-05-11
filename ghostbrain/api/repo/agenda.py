@@ -1,6 +1,7 @@
 """Calendar agenda reader."""
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 import frontmatter
@@ -9,11 +10,23 @@ from ghostbrain.paths import vault_path
 
 
 def _walk_calendar(date: str) -> list[Path]:
+    """Return calendar notes for `date` (YYYY-MM-DD).
+
+    Matches both the connector's compact `YYYYMMDDTHHMMSS-…` filename and
+    the test fixtures' dashed `YYYY-MM-DD-…` format.
+    """
     vault = vault_path()
     if not vault.exists():
         return []
-    # Files for a given date are named with the date prefix.
-    return list(vault.glob(f"20-contexts/*/calendar/{date}*.md"))
+    compact = date.replace("-", "")
+    seen: set[Path] = set()
+    out: list[Path] = []
+    for pattern in (f"20-contexts/*/calendar/{date}*.md", f"20-contexts/*/calendar/{compact}*.md"):
+        for path in vault.glob(pattern):
+            if path not in seen:
+                seen.add(path)
+                out.append(path)
+    return out
 
 
 def _meeting_titles_on(date: str) -> set[str]:
@@ -31,22 +44,58 @@ def _meeting_titles_on(date: str) -> set[str]:
     return out
 
 
+def _parse_iso(value: object) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    # Python's fromisoformat handles `+00:00` but not the trailing `Z`.
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _derive_time_and_duration(fm: dict) -> tuple[str, str] | None:
+    """Build (time, duration) from `start`/`end` ISO timestamps."""
+    start = _parse_iso(fm.get("start"))
+    end = _parse_iso(fm.get("end"))
+    if start is None:
+        return None
+    time_str = start.strftime("%H:%M")
+    if end is None or end <= start:
+        return time_str, ""
+    minutes = int((end - start).total_seconds() // 60)
+    if minutes >= 60 and minutes % 60 == 0:
+        duration = f"{minutes // 60}h"
+    elif minutes >= 60:
+        duration = f"{minutes // 60}h{minutes % 60}m"
+    else:
+        duration = f"{minutes}m"
+    return time_str, duration
+
+
 def _parse_event(path: Path, recorded_titles: set[str]) -> dict | None:
     try:
         post = frontmatter.load(path)
     except Exception:
         return None
     fm = post.metadata
-    if not all(k in fm for k in ("title", "time", "duration")):
+    if "title" not in fm:
         return None
+    if "time" in fm and "duration" in fm:
+        time_str, duration = str(fm["time"]), str(fm["duration"])
+    else:
+        derived = _derive_time_and_duration(fm)
+        if derived is None:
+            return None
+        time_str, duration = derived
     title = str(fm["title"])
     status = "recorded" if title in recorded_titles else "upcoming"
     return {
         "id": path.stem,
-        "time": str(fm["time"]),
-        "duration": str(fm["duration"]),
+        "time": time_str,
+        "duration": duration,
         "title": title,
-        "with": list(fm.get("with", [])),
+        "with": list(fm.get("with") or []),
         "status": status,
     }
 

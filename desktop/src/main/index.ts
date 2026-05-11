@@ -68,10 +68,13 @@ ipcMain.handle('gb:settings:set', (_e, key: unknown, value: unknown) => {
 ipcMain.handle('gb:dialogs:pickVaultFolder', () => pickVaultFolder());
 
 ipcMain.handle('gb:shell:openPath', async (_e, p: unknown) => {
-  if (typeof p !== 'string') {
-    return { ok: false, error: 'openPath: path must be a string' };
+  if (typeof p !== 'string' || p === '') {
+    return { ok: false, error: 'openPath: path must be a non-empty string' };
   }
   const vaultPath = settings.getAll().vaultPath;
+  if (!vaultPath) {
+    return { ok: false, error: 'openPath: vault path is not configured' };
+  }
   // Allow opening the configured vault path itself or any path under it.
   // Reject anything else to prevent the renderer from opening arbitrary paths.
   const normalized = p.replace(/\\/g, '/');
@@ -79,17 +82,25 @@ ipcMain.handle('gb:shell:openPath', async (_e, p: unknown) => {
   if (normalized !== allowed && !normalized.startsWith(allowed + '/')) {
     return { ok: false, error: 'openPath: only the vault path is allowed' };
   }
-  await shell.openPath(p);
+  // shell.openPath resolves with "" on success or an error message on failure.
+  const err = await shell.openPath(p);
+  if (err) {
+    console.error('[shell.openPath] failed:', err, 'path=', p);
+    return { ok: false, error: err };
+  }
   return { ok: true };
 });
 
 app.whenReady().then(async () => {
   buildAppMenu();
   createWindow();
+  console.log('[sidecar] starting; repoRoot =', repoRoot());
   try {
-    await sidecar.start();
+    const info = await sidecar.start();
+    console.log('[sidecar] READY port=', info.port);
     BrowserWindow.getAllWindows()[0]?.webContents.send('gb:sidecar:ready');
   } catch (err) {
+    console.error('[sidecar] FAILED:', err instanceof Error ? err.message : String(err));
     BrowserWindow.getAllWindows()[0]?.webContents.send('gb:sidecar:failed', {
       reason: err instanceof Error ? err.message : String(err),
     });
