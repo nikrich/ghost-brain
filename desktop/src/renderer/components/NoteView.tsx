@@ -1,6 +1,4 @@
 import { useEffect, useMemo } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 
 import { useNote } from '../lib/api/hooks';
 import { useNoteView } from '../stores/note-view';
@@ -9,6 +7,7 @@ import { toast } from '../stores/toast';
 import { Lucide } from './Lucide';
 import { Btn } from './Btn';
 import { Eyebrow } from './Eyebrow';
+import { MarkdownBody } from './MarkdownBody';
 import { SkeletonRows } from './SkeletonRows';
 import { PanelError } from './PanelError';
 
@@ -103,10 +102,10 @@ export function NoteView() {
             </div>
           )}
           {note.data && (
-            <article className="gb-prose mx-auto max-w-[680px] px-8 py-8 text-14 leading-[1.65] text-ink-0">
+            <div className="mx-auto max-w-[680px] px-8 py-8 text-14 leading-[1.65] text-ink-0">
               <FrontmatterStrip fm={note.data.frontmatter} />
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{bodyClean}</ReactMarkdown>
-            </article>
+              <MarkdownBody>{bodyClean}</MarkdownBody>
+            </div>
           )}
         </div>
       </div>

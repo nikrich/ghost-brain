@@ -30,7 +30,10 @@ const stubBridge: GbBridge = {
     set: async () => ({ ok: true }),
   },
   dialogs: { pickVaultFolder: async () => null },
-  shell: { openPath: async () => ({ ok: true }) },
+  shell: {
+    openPath: async () => ({ ok: true }),
+    openExternal: async () => ({ ok: true }),
+  },
   platform: 'darwin',
   api: { request: (async () => ({ ok: true, data: null })) as GbBridge['api']['request'] },
   sidecar: { retry: async () => ({ ok: true }) },

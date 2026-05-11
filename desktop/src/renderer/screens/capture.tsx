@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { MarkdownBody } from '../components/MarkdownBody';
 import { TopBar } from '../components/TopBar';
 import { Btn } from '../components/Btn';
 import { Lucide } from '../components/Lucide';
@@ -236,9 +235,9 @@ function CaptureDetail({ c }: CaptureDetailProps) {
         {c.title}
       </h3>
       {c.body && (
-        <article className="gb-prose mt-[14px] text-13 leading-[1.6] text-ink-0">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{c.body}</ReactMarkdown>
-        </article>
+        <MarkdownBody className="mt-[14px] text-13 leading-[1.6] text-ink-0">
+          {c.body}
+        </MarkdownBody>
       )}
 
       <div className="mt-6 flex gap-2">

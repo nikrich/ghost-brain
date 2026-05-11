@@ -11,6 +11,7 @@ const bridge: GbBridge = {
   },
   shell: {
     openPath: (path: string) => ipcRenderer.invoke('gb:shell:openPath', path),
+    openExternal: (url: string) => ipcRenderer.invoke('gb:shell:openExternal', url),
   },
   platform: process.platform,
   api: {

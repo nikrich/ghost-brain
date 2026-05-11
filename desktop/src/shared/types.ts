@@ -41,6 +41,7 @@ export interface GbBridge {
   };
   shell: {
     openPath(path: string): Promise<{ ok: true } | { ok: false; error: string }>;
+    openExternal(url: string): Promise<{ ok: true } | { ok: false; error: string }>;
   };
   platform: NodeJS.Platform;
   api: {

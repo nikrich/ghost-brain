@@ -91,6 +91,23 @@ ipcMain.handle('gb:shell:openPath', async (_e, p: unknown) => {
   return { ok: true };
 });
 
+ipcMain.handle('gb:shell:openExternal', async (_e, url: unknown) => {
+  if (typeof url !== 'string' || url === '') {
+    return { ok: false, error: 'openExternal: url must be a non-empty string' };
+  }
+  // Allow only well-known external protocols so a stray markdown link can't
+  // trigger `file://` or `vscode://` style handoffs.
+  if (!/^(https?|mailto):/i.test(url)) {
+    return { ok: false, error: `openExternal: protocol not allowed: ${url.slice(0, 32)}` };
+  }
+  try {
+    await shell.openExternal(url);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+});
+
 app.whenReady().then(async () => {
   buildAppMenu();
   createWindow();
