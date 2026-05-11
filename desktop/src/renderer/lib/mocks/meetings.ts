@@ -1,3 +1,10 @@
+// Recording UI stub data. The history portion of the meetings screen
+// reads real data from the sidecar (via useMeetings), but the
+// pre/recording/post state machine is UI-only in Phase 1 — Slice 4 will
+// wire it to the real ghostbrain.recorder. Until then, these constants
+// drive the static portions of that UI (participant list, sample
+// transcript lines, fake speaker airtime percentages).
+
 export interface Participant {
   name: string;
   role: string;
@@ -10,14 +17,6 @@ export interface TranscriptLine {
   t: string;
   text: string;
   live: boolean;
-}
-
-export interface PastMeeting {
-  date: string;
-  title: string;
-  dur: string;
-  speakers: number;
-  tags: string[];
 }
 
 // Per-participant avatar colors. These are mock data — in real usage they come
@@ -67,38 +66,6 @@ export const TRANSCRIPT: TranscriptLine[] = [
     text: "right. minimum one. let's call that out as a soft requirement.",
     live: true,
   },
-];
-
-export const HISTORY: PastMeeting[] = [
-  {
-    date: 'mon · may 5',
-    title: 'weekly with theo',
-    dur: '47:22',
-    speakers: 2,
-    tags: ['1:1', 'roadmap'],
-  },
-  {
-    date: 'fri · may 2',
-    title: 'q2 planning offsite',
-    dur: '2:12:08',
-    speakers: 6,
-    tags: ['planning'],
-  },
-  {
-    date: 'thu · may 1',
-    title: 'design crit · onboarding v2',
-    dur: '32:14',
-    speakers: 4,
-    tags: ['design'],
-  },
-  {
-    date: 'tue · apr 29',
-    title: 'jules <> mira pairing',
-    dur: '54:01',
-    speakers: 2,
-    tags: ['eng'],
-  },
-  { date: 'mon · apr 28', title: 'all hands', dur: '1:04:33', speakers: 12, tags: ['team'] },
 ];
 
 export const SPEAKER_AIRTIME = [34, 28, 22, 16];
