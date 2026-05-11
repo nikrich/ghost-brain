@@ -160,27 +160,26 @@ class ConfluenceConnector(Connector):
         return f"https://{host}/wiki/spaces/{((raw.get('space') or {}).get('key') or '')}/pages/{page_id}"
 
 
-_HTML_TAG_RE = re.compile(r"<[^>]+>")
-_WHITESPACE_RE = re.compile(r"[ \t]+")
 _BLANK_LINES_RE = re.compile(r"\n{3,}")
 
 
 def _strip_html(html: str) -> str:
-    """Pragmatic HTML → text. Confluence storage format is XHTML-ish."""
+    """Confluence storage format (XHTML-ish) → markdown.
+
+    Uses markdownify so paragraph breaks, headings, lists, and tables survive
+    the round-trip. The previous regex-strip flattened everything into a
+    single line.
+    """
     if not html:
         return ""
-    text = _HTML_TAG_RE.sub("", html)
-    # Decode common entities — full entity expansion isn't needed for the
-    # extractor; the model can deal with leftover noise.
-    text = (
-        text.replace("&nbsp;", " ")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", '"')
-        .replace("&#39;", "'")
+    from markdownify import markdownify
+
+    text = markdownify(
+        html,
+        heading_style="ATX",         # `#` headings, not underline
+        bullets="-",                  # `- ` instead of `* `
+        strip=["script", "style"],
     )
-    text = _WHITESPACE_RE.sub(" ", text)
     text = _BLANK_LINES_RE.sub("\n\n", text)
     return text.strip()
 
