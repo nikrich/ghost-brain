@@ -64,6 +64,17 @@ _STATE_KEY: dict[str, str] = {
     "calendar": "macos_calendar",
 }
 
+# Directories under ghostbrain/connectors/ that look like connectors but
+# aren't — shared infrastructure modules (e.g. atlassian provides shared
+# Cloud API helpers used by jira + confluence; it has no fetcher of its own).
+_HIDDEN: frozenset[str] = frozenset({"atlassian"})
+
+# Connector id → inbox subdirectory name under 00-inbox/raw/. Most match;
+# claude_code is captured by the worker as claude-code (hyphenated).
+_INBOX_DIR: dict[str, str] = {
+    "claude_code": "claude-code",
+}
+
 
 def _connectors_root() -> Path:
     """Locate ghostbrain/connectors/ as installed."""
@@ -74,8 +85,9 @@ def _connectors_root() -> Path:
 
 
 def _list_connector_ids() -> list[str]:
-    """Subdirectories of ghostbrain/connectors/ that look like connectors
-    (have an __init__.py, not _base, not __pycache__)."""
+    """Subdirectories of ghostbrain/connectors/ that look like real
+    user-facing connectors (have an __init__.py, not in _HIDDEN, not _base,
+    not __pycache__)."""
     root = _connectors_root()
     if not root.exists():
         return []
@@ -85,10 +97,25 @@ def _list_connector_ids() -> list[str]:
             continue
         if child.name.startswith("_") or child.name == "__pycache__":
             continue
+        if child.name in _HIDDEN:
+            continue
         if not (child / "__init__.py").exists():
             continue
         ids.append(child.name)
     return sorted(ids)
+
+
+def _has_inbox_captures(connector_id: str) -> bool:
+    """Some connectors (e.g. claude_code) are event-driven, not polling —
+    they never write a .last_run file, but their captures land in the inbox
+    just the same. Treat presence of inbox files as evidence of liveness."""
+    from ghostbrain.paths import vault_path
+
+    dir_name = _INBOX_DIR.get(connector_id, connector_id)
+    inbox = vault_path() / "00-inbox" / "raw" / dir_name
+    if not inbox.exists():
+        return False
+    return any(inbox.glob("*.md"))
 
 
 def _read_last_run(connector_id: str) -> str | None:
@@ -110,11 +137,14 @@ def _connector_record(connector_id: str) -> dict:
         "pulls": [],
         "vaultDestination": f"20-contexts/{{ctx}}/{connector_id}/",
     })
-    # A .last_run file means the connector is configured and has successfully
-    # run at least once — call it 'on'. Recency surfaces via the lastSyncAt
-    # field; UI flags stale runs there.
+    # A connector is 'on' if EITHER:
+    #   - it has a .last_run file (polling connector that has run successfully), or
+    #   - it has captures already in the inbox (event-driven connector like claude_code).
+    # Either signal means the connector is configured and producing data. Recency
+    # surfaces via lastSyncAt; the UI flags stale runs there.
     last_run = _read_last_run(connector_id)
-    run_state = "on" if last_run else "off"
+    has_inbox = _has_inbox_captures(connector_id)
+    run_state = "on" if (last_run or has_inbox) else "off"
     return {
         "id": connector_id,
         "displayName": display["displayName"],
