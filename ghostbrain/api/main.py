@@ -2,16 +2,18 @@
 from fastapi import FastAPI
 
 from ghostbrain.api.auth import make_auth_middleware
+from ghostbrain.api.routes import vault as vault_routes
 
 API_VERSION = "1.0.0"
 
 
 def create_app(token: str) -> FastAPI:
-    """Build a FastAPI app with auth wired in. Routers added in later tasks."""
+    """Build a FastAPI app with auth + all routers wired."""
     app = FastAPI(
         title="ghostbrain",
         description="Read-only API for the ghostbrain desktop app.",
         version=API_VERSION,
     )
     app.middleware("http")(make_auth_middleware(token))
+    app.include_router(vault_routes.router)
     return app
