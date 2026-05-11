@@ -85,7 +85,7 @@ export function TodayScreen() {
         }
       />
 
-      <div className="flex max-w-[1100px] flex-col gap-6 px-8 pb-10 pt-6">
+      <div className="mx-auto flex max-w-[1100px] flex-col gap-6 px-8 pb-10 pt-6">
         {/* Hero greeting + ghost activity */}
         <div className="gb-noise relative grid grid-cols-[1.4fr_1fr] gap-7 overflow-hidden rounded-lg border border-hairline bg-vellum p-7">
           <div

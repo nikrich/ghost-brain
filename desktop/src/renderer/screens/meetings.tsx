@@ -142,7 +142,7 @@ function PreMeeting({ onStart, event }: PreMeetingProps) {
       ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '';
   return (
-    <div className="max-w-[1100px] px-8 py-6">
+    <div className="mx-auto max-w-[1100px] px-8 py-6">
       <div className="gb-noise relative grid grid-cols-[1.3fr_1fr] gap-8 overflow-hidden rounded-lg border border-hairline bg-vellum p-8">
         <div
           className="pointer-events-none absolute -right-[100px] -top-[100px] h-[400px] w-[400px]"
@@ -245,7 +245,7 @@ function PreMeeting({ onStart, event }: PreMeetingProps) {
 
 function IdleLobby({ onStart }: { onStart: () => void }) {
   return (
-    <div className="max-w-[1100px] px-8 py-6">
+    <div className="mx-auto max-w-[1100px] px-8 py-6">
       <div className="flex flex-col items-center gap-[18px] rounded-lg border border-hairline bg-vellum p-12">
         <Ghost size={56} floating />
         <h2 className="m-0 font-display text-24 font-semibold tracking-tight-x text-ink-0">
@@ -367,7 +367,7 @@ function ActiveRecording({ startedAt, onStop }: ActiveRecordingProps) {
   }, [startedAt]);
 
   return (
-    <div className="max-w-[1100px] px-8 py-6">
+    <div className="mx-auto max-w-[1100px] px-8 py-6">
       {/* live banner */}
       <div
         className="mb-4 grid grid-cols-[auto_1fr_auto] items-center gap-6 rounded-lg border border-oxblood/30 p-5"
@@ -523,7 +523,7 @@ interface PostMeetingProps {
 
 function PostMeeting({ onClose }: PostMeetingProps) {
   return (
-    <div className="max-w-[1100px] px-8 py-6">
+    <div className="mx-auto max-w-[1100px] px-8 py-6">
       <div className="mb-4 rounded-lg border border-hairline bg-vellum p-7">
         <div className="mb-4 flex items-center gap-3">
           <Pill tone="moss">
@@ -637,7 +637,7 @@ function MeetingHistory() {
   const meetings = useMeetings({ limit: 50 });
   const openNote = useNoteView((s) => s.open);
   return (
-    <div className="max-w-[1100px] px-8 pb-10 pt-2">
+    <div className="mx-auto max-w-[1100px] px-8 pb-10 pt-2">
       <Panel
         title="past meetings"
         subtitle={meetings.data ? `${meetings.data.total} in vault` : '…'}

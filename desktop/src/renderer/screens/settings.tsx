@@ -55,7 +55,7 @@ export function SettingsScreen() {
             />
           ))}
         </nav>
-        <div className="max-w-[720px] overflow-y-auto px-8 py-6">
+        <div className="mx-auto max-w-[720px] overflow-y-auto px-8 py-6">
           {section === 'display' && <DisplaySettings />}
           {section === 'vault' && <VaultSettings />}
           {section === 'privacy' && <PrivacySettings />}
