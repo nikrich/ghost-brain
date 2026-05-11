@@ -67,12 +67,12 @@ def main() -> None:
     print(f"github: queued {count} event(s)")
 
 
-if __name__ == "__main__":
-    main()
-
-
 def _load_routing() -> dict:
     f = vault_path() / "90-meta" / "routing.yaml"
     if not f.exists():
         return {}
     return yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+
+
+if __name__ == "__main__":
+    main()
