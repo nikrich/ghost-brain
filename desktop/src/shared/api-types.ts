@@ -57,6 +57,7 @@ export interface PastMeeting {
   dur: string;
   speakers: number;
   tags: string[];
+  path: string | null;
 }
 
 export interface MeetingsPage {

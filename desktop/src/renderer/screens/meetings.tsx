@@ -8,6 +8,7 @@ import { Panel } from '../components/Panel';
 import { Catch } from '../components/Catch';
 import { Ghost } from '../components/Ghost';
 import { useMeeting } from '../stores/meeting';
+import { useNoteView } from '../stores/note-view';
 import { stub } from '../stores/toast';
 import {
   PARTICIPANTS,
@@ -634,6 +635,7 @@ function SmallStat({ label, value }: SmallStatProps) {
 // ── History ────────────────────────────────────────────────────────────────
 function MeetingHistory() {
   const meetings = useMeetings({ limit: 50 });
+  const openNote = useNoteView((s) => s.open);
   return (
     <div className="max-w-[1100px] px-8 pb-10 pt-2">
       <Panel
@@ -675,7 +677,11 @@ function MeetingHistory() {
               <Eyebrow>tags</Eyebrow>
             </div>
             {meetings.data.items.map((m) => (
-              <HistoryRow key={m.id} m={m} />
+              <HistoryRow
+                key={m.id}
+                m={m}
+                onOpen={() => m.path && openNote(m.path)}
+              />
             ))}
           </>
         )}
@@ -686,14 +692,15 @@ function MeetingHistory() {
 
 interface HistoryRowProps {
   m: PastMeeting;
+  onOpen: () => void;
 }
 
-function HistoryRow({ m }: HistoryRowProps) {
-  return (
-    <div
-      className="grid cursor-pointer items-center gap-3 rounded-sm bg-transparent px-2 py-[10px] hover:bg-paper"
-      style={{ gridTemplateColumns: '120px minmax(0, 1fr) 80px 80px minmax(0, 1fr)' }}
-    >
+function HistoryRow({ m, onOpen }: HistoryRowProps) {
+  const className =
+    'grid w-full items-center gap-3 rounded-sm bg-transparent px-2 py-[10px] text-left' +
+    (m.path ? ' cursor-pointer hover:bg-paper' : ' opacity-70');
+  const content = (
+    <>
       <span className="font-mono text-11 text-ink-2">{m.date}</span>
       <span className="text-13 text-ink-0">{m.title}</span>
       <span className="font-mono text-11 text-ink-1">{m.dur}</span>
@@ -705,6 +712,26 @@ function HistoryRow({ m }: HistoryRowProps) {
           </Pill>
         ))}
       </div>
-    </div>
+    </>
+  );
+  if (!m.path) {
+    return (
+      <div
+        className={className}
+        style={{ gridTemplateColumns: '120px minmax(0, 1fr) 80px 80px minmax(0, 1fr)' }}
+      >
+        {content}
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={className}
+      style={{ gridTemplateColumns: '120px minmax(0, 1fr) 80px 80px minmax(0, 1fr)' }}
+    >
+      {content}
+    </button>
   );
 }

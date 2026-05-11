@@ -85,6 +85,10 @@ def _parse(path: Path) -> dict | None:
         return None
     tags_raw = fm.get("tags") or []
     tags = list(tags_raw) if isinstance(tags_raw, list) else []
+    try:
+        rel_path = str(path.resolve().relative_to(vault_path().resolve()))
+    except ValueError:
+        rel_path = None
     return {
         "id": path.stem,
         "title": str(fm["title"]),
@@ -92,6 +96,7 @@ def _parse(path: Path) -> dict | None:
         "dur": dur,
         "speakers": int(fm["speakers"]) if isinstance(fm.get("speakers"), int) else 0,
         "tags": [str(t) for t in tags],
+        "path": rel_path,
     }
 
 

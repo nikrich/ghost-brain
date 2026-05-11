@@ -11,6 +11,7 @@ class PastMeeting(BaseModel):
     dur: str
     speakers: int
     tags: list[str]
+    path: str | None = None
 
 
 class MeetingsPage(BaseModel):
