@@ -13,14 +13,22 @@ const bridge: GbBridge = {
     openPath: (path: string) => ipcRenderer.invoke('gb:shell:openPath', path),
   },
   platform: process.platform,
-  on: (channel, listener) => {
-    const wrapped = () => listener();
+  api: {
+    request: (method, path, body) =>
+      ipcRenderer.invoke('gb:api:request', method, path, body),
+  },
+  sidecar: {
+    retry: () => ipcRenderer.invoke('gb:sidecar:retry'),
+  },
+  on: ((channel: string, listener: (...args: unknown[]) => void) => {
+    const wrapped = (_e: Electron.IpcRendererEvent, ...args: unknown[]) =>
+      listener(...args);
     const ipcChannel = `gb:${channel}`;
     ipcRenderer.on(ipcChannel, wrapped);
     return () => {
       ipcRenderer.off(ipcChannel, wrapped);
     };
-  },
+  }) as GbBridge['on'],
 };
 
 contextBridge.exposeInMainWorld('gb', bridge);

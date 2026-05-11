@@ -32,7 +32,9 @@ const stubBridge: GbBridge = {
   dialogs: { pickVaultFolder: async () => null },
   shell: { openPath: async () => ({ ok: true }) },
   platform: 'darwin',
-  on: () => () => {},
+  api: { request: (async () => ({ ok: true, data: null })) as GbBridge['api']['request'] },
+  sidecar: { retry: async () => ({ ok: true }) },
+  on: (() => () => {}) as GbBridge['on'],
 };
 
 (globalThis as unknown as { window: Window & { gb: GbBridge } }).window.gb = stubBridge;

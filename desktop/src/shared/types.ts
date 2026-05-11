@@ -43,7 +43,22 @@ export interface GbBridge {
     openPath(path: string): Promise<{ ok: true } | { ok: false; error: string }>;
   };
   platform: NodeJS.Platform;
+  api: {
+    request<T = unknown>(
+      method: 'GET' | 'POST',
+      path: string,
+      body?: unknown,
+    ): Promise<{ ok: true; data: T } | { ok: false; error: string }>;
+  };
+  sidecar: {
+    retry(): Promise<{ ok: true } | { ok: false; error: string }>;
+  };
   on(channel: 'nav:settings', listener: () => void): () => void;
+  on(channel: 'sidecar:ready', listener: () => void): () => void;
+  on(
+    channel: 'sidecar:failed',
+    listener: (info: { reason: string }) => void,
+  ): () => void;
 }
 
 declare global {
