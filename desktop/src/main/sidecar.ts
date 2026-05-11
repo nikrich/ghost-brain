@@ -1,5 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 export interface SidecarInfo {
   port: number;
@@ -19,10 +21,17 @@ const STARTUP_TIMEOUT_MS = 10_000;
 const RESTART_BACKOFF_MS = 2_000;
 const MAX_RESTART_ATTEMPTS = 1;
 
-function pythonExecutable(): string {
-  // On Windows some installs only have `python` on PATH; check at runtime.
-  // For dev we assume macOS / Linux with python3.
-  return process.platform === 'win32' ? 'python' : 'python3';
+function pythonExecutable(cwd: string): string {
+  // Prefer the project venv if it exists at <cwd>/.venv/. PATH `python3` is
+  // whatever Electron inherited from the launching shell — often the system
+  // Python or another venv, neither of which has the project deps installed.
+  // The venv layout differs by platform: bin/ on macOS/Linux, Scripts/ on Win.
+  const isWin = process.platform === 'win32';
+  const venvPython = isWin
+    ? join(cwd, '.venv', 'Scripts', 'python.exe')
+    : join(cwd, '.venv', 'bin', 'python');
+  if (existsSync(venvPython)) return venvPython;
+  return isWin ? 'python' : 'python3';
 }
 
 export class Sidecar extends EventEmitter {
@@ -81,7 +90,7 @@ export class Sidecar extends EventEmitter {
 
   private spawn(): Promise<SidecarInfo> {
     return new Promise((resolve, reject) => {
-      const exe = pythonExecutable();
+      const exe = pythonExecutable(this.cwd);
       const proc = spawn(exe, ['-m', 'ghostbrain.api'], {
         cwd: this.cwd,
         env: { ...process.env, PYTHONUNBUFFERED: '1' },
