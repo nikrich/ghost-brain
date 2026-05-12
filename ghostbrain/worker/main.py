@@ -74,25 +74,53 @@ def run_loop() -> None:
             continue
 
         event_id = event_path.stem
+        # Phase A — process. A failure here leaves the file in processing/ so
+        # the except branch can move it to failed/.
+        processed_ok = False
+        summary: dict = {}
         try:
             event = json.loads(event_path.read_text(encoding="utf-8"))
             event_id = event.get("id", event_id)
             summary = process_event(event) or {}
+            processed_ok = True
+        except Exception as e:  # noqa: BLE001
+            log.exception("Processing failed for %s", event_id)
+            if event_path.exists():
+                failed_path = _move(event_path, root / "failed")
+                (failed_path.with_suffix(failed_path.suffix + ".error")).write_text(
+                    f"{type(e).__name__}: {e}\n", encoding="utf-8"
+                )
+            audit_log("event_failed", event_id, error=f"{type(e).__name__}: {e}")
+
+        if not processed_ok:
+            continue
+
+        # Phase B — move to done/ + audit. A failure here MUST NOT push the file
+        # into failed/ (it was processed successfully) and MUST NOT crash the
+        # worker. The pipeline now puts a `status` key in the summary on the
+        # skip path, which used to collide with the explicit `status=` kwarg
+        # below and TypeError out — we strip reserved keys from the spread to
+        # prevent that.
+        try:
             _move(event_path, root / "done")
+        except Exception:  # noqa: BLE001
+            log.exception("Failed to move %s to done/ (already moved?)", event_id)
+
+        # Exclude every key the audit_log call already binds — event_id is
+        # positional, status/source are keyword. Without this, a summary dict
+        # carrying any of them produces "multiple values for keyword argument".
+        reserved = {"event_id", "status", "source"}
+        extras = {k: v for k, v in summary.items() if v is not None and k not in reserved}
+        try:
             audit_log(
                 "event_processed",
                 event_id,
                 status="success",
                 source=event.get("source"),
-                **{k: v for k, v in summary.items() if v is not None},
+                **extras,
             )
-        except Exception as e:  # noqa: BLE001
-            log.exception("Processing failed for %s", event_id)
-            failed_path = _move(event_path, root / "failed")
-            (failed_path.with_suffix(failed_path.suffix + ".error")).write_text(
-                f"{type(e).__name__}: {e}\n", encoding="utf-8"
-            )
-            audit_log("event_failed", event_id, error=f"{type(e).__name__}: {e}")
+        except Exception:  # noqa: BLE001
+            log.exception("audit_log failed for %s (event still counted as processed)", event_id)
 
     audit_log("worker_stopped")
     log.info("Worker stopped")
