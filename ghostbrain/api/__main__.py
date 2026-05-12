@@ -3,9 +3,15 @@
 Picks a random free port on 127.0.0.1, generates a random 256-bit hex token,
 prints the READY banner to stdout BEFORE handing off to uvicorn (so the parent
 process can capture port + token from a single line), then runs the server.
+
+If GHOSTBRAIN_SCHEDULER_ENABLED=1, also boots the in-process scheduler
+(connector cron jobs + worker + recorder). When unset/0, the API is the same
+read-only sidecar it's always been.
 """
 from __future__ import annotations
 
+import logging
+import os
 import secrets
 import socket
 import sys
@@ -13,6 +19,8 @@ import sys
 import uvicorn
 
 from ghostbrain.api.main import create_app
+
+log = logging.getLogger("ghostbrain.api.main")
 
 
 def _pick_port() -> int:
@@ -23,14 +31,47 @@ def _pick_port() -> int:
         return s.getsockname()[1]
 
 
+def _scheduler_enabled() -> bool:
+    raw = os.environ.get("GHOSTBRAIN_SCHEDULER_ENABLED", "").strip().lower()
+    return raw in ("1", "true", "yes", "on")
+
+
+def _include_recorder() -> bool:
+    raw = os.environ.get("GHOSTBRAIN_RECORDER_ENABLED", "1").strip().lower()
+    return raw in ("1", "true", "yes", "on")
+
+
 def main() -> int:
     token = secrets.token_hex(32)
     port = _pick_port()
     app = create_app(token=token)
 
+    # Wire the scheduler lifecycle BEFORE printing READY, so the desktop can
+    # query /v1/scheduler/status immediately and get a real answer.
+    scheduler_enabled = _scheduler_enabled()
+    if scheduler_enabled:
+        from ghostbrain.scheduler_jobs import build as build_scheduler
+
+        scheduler = build_scheduler(include_recorder=_include_recorder())
+        app.state.scheduler = scheduler
+
+        @app.on_event("startup")
+        async def _start_scheduler() -> None:
+            await scheduler.start()
+
+        @app.on_event("shutdown")
+        async def _stop_scheduler() -> None:
+            await scheduler.stop()
+    else:
+        app.state.scheduler = None
+
     # Print the READY banner BEFORE uvicorn takes over output. Parent process
-    # parses this single line to capture port + token.
-    print(f"READY port={port} token={token}", flush=True)
+    # parses this single line to capture port + token. Suffix with a hint about
+    # scheduler state so debugging double-fetches is one log line away.
+    print(
+        f"READY port={port} token={token} scheduler={'on' if scheduler_enabled else 'off'}",
+        flush=True,
+    )
 
     uvicorn.run(
         app,

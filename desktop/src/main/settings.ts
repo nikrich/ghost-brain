@@ -31,6 +31,8 @@ const defaults: Settings = {
   transcriptModel: 'whisper-large-v3',
 
   folderStructure: 'by-source',
+
+  schedulerEnabled: false,
 };
 
 function configPath(): string {

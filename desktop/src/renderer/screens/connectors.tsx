@@ -6,7 +6,14 @@ import { Pill } from '../components/Pill';
 import { Eyebrow } from '../components/Eyebrow';
 import { Toggle } from '../components/Toggle';
 import type { Connector, ConnectorDetail, ConnectorState } from '../../shared/api-types';
-import { useConnector, useConnectors } from '../lib/api/hooks';
+import {
+  useConnector,
+  useConnectors,
+  useSchedulerDiagnostics,
+  useSchedulerStatus,
+  useSyncAllConnectors,
+  useSyncConnector,
+} from '../lib/api/hooks';
 import { SkeletonRows } from '../components/SkeletonRows';
 import { PanelEmpty } from '../components/PanelEmpty';
 import { PanelError } from '../components/PanelError';
@@ -25,10 +32,13 @@ const filterLabel = (f: Filter): string =>
 // align across them.
 const ROW_GRID = '32px minmax(0, 1fr) 100px 120px 120px 90px';
 
-const connectorIconSrc = (id: string): string => `/assets/connectors/${id}.svg`;
+const connectorIconSrc = (id: string): string => `assets/connectors/${id}.svg`;
 
 export function ConnectorsScreen() {
   const connectors = useConnectors();
+  const scheduler = useSchedulerStatus({ intervalMs: 15_000 });
+  const diagnostics = useSchedulerDiagnostics();
+  const syncAll = useSyncAllConnectors();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
 
@@ -43,6 +53,11 @@ export function ConnectorsScreen() {
   const filtered =
     connectors.data?.filter((c) => filter === 'all' || c.state === filter) ?? [];
 
+  const schedulerEnabled = scheduler.data?.enabled === true;
+  const doubleSchedulingActive = !!(
+    schedulerEnabled && diagnostics.data?.double_scheduling
+  );
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-paper">
       <TopBar
@@ -54,9 +69,16 @@ export function ConnectorsScreen() {
               variant="secondary"
               size="sm"
               icon={<Lucide name="refresh-cw" size={13} />}
-              onClick={() => stub(3)}
+              onClick={() => {
+                if (!schedulerEnabled) {
+                  stub(3);
+                  return;
+                }
+                syncAll.mutate();
+              }}
+              disabled={syncAll.isPending}
             >
-              sync all
+              {syncAll.isPending ? 'syncing…' : 'sync all'}
             </Btn>
             <Btn
               variant="primary"
@@ -70,6 +92,28 @@ export function ConnectorsScreen() {
           </div>
         }
       />
+
+      {doubleSchedulingActive && (
+        <div className="flex items-start gap-3 border-b border-oxblood/30 bg-oxblood/10 px-6 py-3">
+          <Lucide name="alert-triangle" size={14} color="var(--oxblood)" />
+          <div className="flex-1 text-12 leading-[1.4]">
+            <div className="font-medium text-oxblood">
+              Double scheduling detected
+            </div>
+            <div className="mt-[2px] text-ink-1">
+              Both the in-app scheduler and launchd are active. Run{' '}
+              <code className="font-mono text-11">scripts/disable-launchd.sh</code>{' '}
+              or turn off &ldquo;Run scheduler in-app&rdquo; in Settings to avoid
+              duplicate fetches.{' '}
+              {diagnostics.data?.active_launchd_plists.length ? (
+                <span className="font-mono text-11 text-ink-2">
+                  ({diagnostics.data.active_launchd_plists.join(', ')})
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid flex-1 grid-cols-[1fr_380px] overflow-hidden">
         {/* List */}
@@ -237,6 +281,10 @@ interface ConnectorDetailProps {
 }
 
 function ConnectorDetailPanel({ c }: ConnectorDetailProps) {
+  const syncOne = useSyncConnector();
+  const scheduler = useSchedulerStatus();
+  const schedulerEnabled = scheduler.data?.enabled === true;
+  const jobStatus = scheduler.data?.jobs[c.id];
   return (
     <aside className="flex flex-col overflow-y-auto border-l border-hairline bg-vellum">
       {/* hero */}
@@ -282,9 +330,16 @@ function ConnectorDetailPanel({ c }: ConnectorDetailProps) {
                 variant="secondary"
                 size="sm"
                 icon={<Lucide name="refresh-cw" size={13} />}
-                onClick={() => stub(3)}
+                onClick={() => {
+                  if (!schedulerEnabled) {
+                    stub(3);
+                    return;
+                  }
+                  syncOne.mutate(c.id);
+                }}
+                disabled={syncOne.isPending}
               >
-                sync now
+                {syncOne.isPending ? 'syncing…' : 'sync now'}
               </Btn>
               <Btn
                 variant="ghost"
@@ -325,7 +380,19 @@ function ConnectorDetailPanel({ c }: ConnectorDetailProps) {
             <Stat
               label="last sync"
               value={formatRelativeTime(c.lastSyncAt)}
-              delta="auto · every 5m"
+              delta={
+                jobStatus
+                  ? `${jobStatus.schedule_label}${
+                      jobStatus.next_run_at
+                        ? ` · next ${formatRelativeTime(
+                            new Date(jobStatus.next_run_at * 1000).toISOString(),
+                          )}`
+                        : ''
+                    }`
+                  : schedulerEnabled
+                    ? 'pending'
+                    : 'launchd'
+              }
             />
           </div>
         </DetailBlock>

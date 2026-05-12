@@ -556,7 +556,7 @@ interface ActionProps {
   text: string;
 }
 
-function Action({ who, text }: ActionProps) {
+function _Action({ who, text }: ActionProps) {
   return (
     <div className="flex items-start gap-2 py-[6px]">
       <input
@@ -576,7 +576,7 @@ interface SmallStatProps {
   value: string;
 }
 
-function SmallStat({ label, value }: SmallStatProps) {
+function _SmallStat({ label, value }: SmallStatProps) {
   return (
     <div className="rounded-r6 border border-hairline bg-paper p-3">
       <Eyebrow>{label}</Eyebrow>

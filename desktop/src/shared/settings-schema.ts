@@ -21,6 +21,12 @@ export const settingsSchema = z.object({
   transcriptModel: z.enum(['whisper-large-v3', 'whisper-medium']),
 
   folderStructure: z.enum(['by-source', 'by-date', 'by-person']),
+
+  // When true the sidecar runs its own scheduler — connectors fire on their
+  // intervals, worker + recorder run as in-process daemons, and the app stays
+  // alive in the tray. Default false so existing launchd setups keep working.
+  // Cutover flow: run scripts/disable-launchd.sh, then flip this on.
+  schedulerEnabled: z.boolean(),
 });
 
 export type SettingsKey = keyof z.infer<typeof settingsSchema>;

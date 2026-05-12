@@ -5,7 +5,11 @@ import { Lucide } from '../components/Lucide';
 import { Toggle } from '../components/Toggle';
 import { Ghost } from '../components/Ghost';
 import { useSettings } from '../stores/settings';
-import { useRecorderSettings, useUpdateRecorderSettings } from '../lib/api/hooks';
+import {
+  useRecorderSettings,
+  useSchedulerDiagnostics,
+  useUpdateRecorderSettings,
+} from '../lib/api/hooks';
 import { toast } from '../stores/toast';
 import { HOTKEYS, format as formatShortcut } from '../lib/shortcuts';
 import type {
@@ -25,13 +29,22 @@ async function trySet<K extends keyof Settings>(
   if (!r.ok) toast.error(r.error);
 }
 
-type SectionId = 'display' | 'vault' | 'privacy' | 'meeting' | 'hotkeys' | 'account' | 'about';
+type SectionId =
+  | 'display'
+  | 'vault'
+  | 'privacy'
+  | 'meeting'
+  | 'background'
+  | 'hotkeys'
+  | 'account'
+  | 'about';
 
 const SECTIONS: Array<{ id: SectionId; label: string; icon: string }> = [
   { id: 'display', label: 'display', icon: 'sun' },
   { id: 'vault', label: 'vault', icon: 'hard-drive' },
   { id: 'privacy', label: 'privacy', icon: 'shield' },
   { id: 'meeting', label: 'meetings', icon: 'mic' },
+  { id: 'background', label: 'background', icon: 'activity' },
   { id: 'hotkeys', label: 'hotkeys', icon: 'command' },
   { id: 'account', label: 'account', icon: 'user' },
   { id: 'about', label: 'about', icon: 'info' },
@@ -61,6 +74,7 @@ export function SettingsScreen() {
           {section === 'vault' && <VaultSettings />}
           {section === 'privacy' && <PrivacySettings />}
           {section === 'meeting' && <MeetingSettings />}
+          {section === 'background' && <BackgroundSettings />}
           {section === 'hotkeys' && <HotkeySettings />}
           {section === 'account' && <AccountSettings />}
           {section === 'about' && <AboutSettings />}
@@ -304,6 +318,61 @@ function MeetingSettings() {
             <option value="whisper-large-v3">whisper-large-v3</option>
             <option value="whisper-medium">whisper-medium</option>
           </select>
+        }
+      />
+    </div>
+  );
+}
+
+function BackgroundSettings() {
+  const enabled = useSettings((s) => s.schedulerEnabled);
+  const setSetting = useSettings((s) => s.set);
+  const diagnostics = useSchedulerDiagnostics();
+  const conflicts = enabled && diagnostics.data?.double_scheduling;
+
+  return (
+    <div>
+      <SectionHeader
+        title="background"
+        sub="when on, ghostbrain stays running in the menu bar and fetches connectors on a schedule from inside the app."
+      />
+      {conflicts ? (
+        <div className="mb-4 flex gap-3 rounded-r6 border border-oxblood/30 bg-oxblood/10 p-3">
+          <Lucide name="alert-triangle" size={14} color="var(--oxblood)" />
+          <div className="flex-1 text-12 leading-[1.4]">
+            <div className="font-medium text-oxblood">launchd is still active</div>
+            <div className="mt-[2px] text-ink-1">
+              run{' '}
+              <code className="font-mono text-11">scripts/disable-launchd.sh</code>{' '}
+              to unload these plists, otherwise both schedulers will fetch:{' '}
+              <span className="font-mono text-11 text-ink-2">
+                {diagnostics.data?.active_launchd_plists.join(', ')}
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      <SettingRow
+        label="run scheduler in-app"
+        sub="closing the main window leaves the sidecar running in the tray. quit from the tray menu (or cmd+q) to stop everything."
+        control={
+          <Toggle
+            on={enabled}
+            onChange={(v) => void trySet(setSetting, 'schedulerEnabled', v)}
+          />
+        }
+      />
+      <SettingRow
+        label="ffmpeg available"
+        sub="required for the in-app meeting recorder. install via `brew install ffmpeg`."
+        control={
+          <span className="font-mono text-11 text-ink-2">
+            {diagnostics.isLoading
+              ? '…'
+              : diagnostics.data?.ffmpeg_available
+                ? 'yes'
+                : 'no'}
+          </span>
         }
       />
     </div>

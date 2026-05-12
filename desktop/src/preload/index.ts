@@ -21,6 +21,9 @@ const bridge: GbBridge = {
   sidecar: {
     retry: () => ipcRenderer.invoke('gb:sidecar:retry'),
   },
+  tray: {
+    setFailing: (names: string[]) => ipcRenderer.invoke('gb:tray:setFailing', names),
+  },
   on: ((channel: string, listener: (...args: unknown[]) => void) => {
     const wrapped = (_e: Electron.IpcRendererEvent, ...args: unknown[]) =>
       listener(...args);

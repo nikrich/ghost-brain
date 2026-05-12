@@ -92,7 +92,7 @@ export function CaptureScreen() {
             className={chipClass(filter === s.value)}
           >
             <img
-              src={`/assets/connectors/${s.asset}.svg`}
+              src={`assets/connectors/${s.asset}.svg`}
               alt=""
               className="mr-1 inline-block h-[11px] w-[11px] align-[-1px]"
             />
@@ -171,7 +171,7 @@ function CaptureRow({ c, selected, onClick }: CaptureRowProps) {
         }`}
       />
       <img
-        src={`/assets/connectors/${assetIdFromSource(c.source)}.svg`}
+        src={`assets/connectors/${assetIdFromSource(c.source)}.svg`}
         alt=""
         className="h-[13px] w-[13px]"
       />
@@ -218,7 +218,7 @@ function CaptureDetail({ c }: CaptureDetailProps) {
     <aside className="overflow-y-auto border-l border-hairline bg-vellum p-6">
       <div className="mb-[14px] flex items-center gap-[10px]">
         <img
-          src={`/assets/connectors/${assetIdFromSource(c.source)}.svg`}
+          src={`assets/connectors/${assetIdFromSource(c.source)}.svg`}
           alt=""
           className="h-[18px] w-[18px]"
         />

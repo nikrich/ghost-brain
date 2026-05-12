@@ -468,7 +468,7 @@ function ActivityRowComp({ source, verb, subject, time, onClick }: ActivityRowCo
   const content = (
     <>
       <img
-        src={`/assets/connectors/${source}.svg`}
+        src={`assets/connectors/${source}.svg`}
         alt=""
         className="h-[14px] w-[14px] opacity-90"
       />
@@ -551,7 +551,7 @@ function ConnectorPulse({ id, name, state, count }: ConnectorPulseProps) {
     >
       <div className="relative">
         <img
-          src={`/assets/connectors/${id}.svg`}
+          src={`assets/connectors/${id}.svg`}
           alt={name}
           className={`h-[22px] w-[22px] ${state === 'off' ? 'grayscale' : ''}`}
         />
@@ -577,7 +577,7 @@ function CaptureItem({ source, title, snippet, from, onClick }: CaptureItemProps
   const content = (
     <>
       <div className="mb-1 flex items-center gap-2">
-        <img src={`/assets/connectors/${source}.svg`} alt="" className="h-3 w-3" />
+        <img src={`assets/connectors/${source}.svg`} alt="" className="h-3 w-3" />
         <span className="flex-1 truncate text-12 font-medium text-ink-0 text-left">{title}</span>
         <span className="font-mono text-9 text-ink-3">{from}</span>
       </div>

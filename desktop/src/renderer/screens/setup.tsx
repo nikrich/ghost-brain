@@ -125,7 +125,7 @@ function ConnectorCard({ recipe, connector }: ConnectorCardProps) {
         className="flex w-full items-center gap-3 px-4 py-3 text-left"
       >
         <img
-          src={`/assets/connectors/${recipe.id}.svg`}
+          src={`assets/connectors/${recipe.id}.svg`}
           alt=""
           className="h-[18px] w-[18px] flex-shrink-0"
         />

@@ -33,6 +33,8 @@ export const useSettings = create<SettingsState>((set) => ({
 
   folderStructure: 'by-source',
 
+  schedulerEnabled: false,
+
   ready: false,
   hydrate: async () => {
     const all = await window.gb.settings.getAll();

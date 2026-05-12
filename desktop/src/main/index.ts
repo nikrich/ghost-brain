@@ -8,6 +8,7 @@ import { loadInitialState, attachStatePersistence } from './window-state';
 import { buildAppMenu } from './menu';
 import { Sidecar } from './sidecar';
 import { forward } from './api-forwarder';
+import { installTray, type TrayController } from './tray';
 
 // Repo root: in dev, that's one level up from the desktop/ project dir
 // (app.getAppPath() resolves to the desktop/ folder). In prod (Phase 2 bundles
@@ -16,7 +17,31 @@ function repoRoot(): string {
   return join(app.getAppPath(), '..');
 }
 
-const sidecar = new Sidecar(repoRoot());
+const sidecar = new Sidecar(repoRoot(), {
+  schedulerEnabled: settings.getAll().schedulerEnabled,
+});
+
+let trayController: TrayController | null = null;
+
+function showWindow(): void {
+  let win = BrowserWindow.getAllWindows()[0];
+  if (!win) {
+    createWindow();
+    win = BrowserWindow.getAllWindows()[0];
+  }
+  if (!win) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+}
+
+async function quitApp(): Promise<void> {
+  // Mark quit-in-progress so before-quit unwinds cleanly.
+  isQuitting = true;
+  app.quit();
+}
+
+let isQuitting = false;
 
 function createWindow() {
   const isMac = process.platform === 'darwin';
@@ -42,6 +67,18 @@ function createWindow() {
   if (initial.maximized) win.maximize();
   attachStatePersistence(win);
   win.on('ready-to-show', () => win.show());
+  // On macOS, hide the window on close instead of destroying it. The tray
+  // keeps the app reachable; explicit Quit comes from Cmd+Q / tray menu /
+  // dock menu. On other platforms keep default close behavior — quit triggers
+  // via window-all-closed below.
+  if (isMac) {
+    win.on('close', (event) => {
+      if (!isQuitting) {
+        event.preventDefault();
+        win.hide();
+      }
+    });
+  }
   if (process.env.ELECTRON_RENDERER_URL) {
     win.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
@@ -51,7 +88,7 @@ function createWindow() {
 
 ipcMain.handle('gb:settings:getAll', () => settings.getAll());
 
-ipcMain.handle('gb:settings:set', (_e, key: unknown, value: unknown) => {
+ipcMain.handle('gb:settings:set', async (_e, key: unknown, value: unknown) => {
   if (typeof key !== 'string' || !(key in settingsSchema.shape)) {
     return { ok: false, error: `Unknown setting: ${String(key)}` };
   }
@@ -62,6 +99,19 @@ ipcMain.handle('gb:settings:set', (_e, key: unknown, value: unknown) => {
     return { ok: false, error: `Invalid value for ${key}: ${issue}` };
   }
   settings.setKey(key as keyof Settings, parsed.data as Settings[keyof Settings]);
+  if (key === 'schedulerEnabled') {
+    // Sidecar reads this from its launch env, so flipping it requires a restart.
+    sidecar.setSchedulerEnabled(parsed.data as boolean);
+    try {
+      await sidecar.stop();
+      await sidecar.start();
+    } catch (err) {
+      return {
+        ok: false,
+        error: `Sidecar restart failed: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
+  }
   return { ok: true };
 });
 
@@ -111,6 +161,19 @@ ipcMain.handle('gb:shell:openExternal', async (_e, url: unknown) => {
 app.whenReady().then(async () => {
   buildAppMenu();
   createWindow();
+  trayController = installTray({
+    onShow: showWindow,
+    onSyncNow: async () => {
+      // Best-effort fire-and-forget: surfacing errors here would interrupt the
+      // tray flow. Failures show up via the connector status polling instead.
+      try {
+        await forward(sidecar, 'POST', '/v1/connectors/sync-all', undefined);
+      } catch {
+        // swallowed — see comment above
+      }
+    },
+    onQuit: () => void quitApp(),
+  });
   console.log('[sidecar] starting; repoRoot =', repoRoot());
   try {
     const info = await sidecar.start();
@@ -168,6 +231,15 @@ ipcMain.handle(
     return forward(sidecar, m, path, body);
   },
 );
+
+ipcMain.handle('gb:tray:setFailing', (_e, names: unknown) => {
+  if (!Array.isArray(names)) {
+    return { ok: false, error: 'expected string[]' };
+  }
+  const sanitized = names.filter((n): n is string => typeof n === 'string');
+  trayController?.setFailing(sanitized);
+  return { ok: true };
+});
 
 ipcMain.handle('gb:sidecar:retry', async () => {
   try {

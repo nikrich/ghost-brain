@@ -187,3 +187,81 @@ export function useUpdateRecorderSettings() {
     },
   });
 }
+
+// ── Scheduler ─────────────────────────────────────────────────────────────
+
+export interface SchedulerJobStatus {
+  name: string;
+  schedule_label: string;
+  last_run_at: number | null;
+  last_run_ok: boolean | null;
+  last_queued: number;
+  last_error: string | null;
+  last_error_type: string | null;
+  last_skipped_reason: string | null;
+  next_run_at: number | null;
+  consecutive_failures: number;
+  failed_since: number | null;
+  running: boolean;
+}
+
+export interface SchedulerStatus {
+  enabled: boolean;
+  jobs: Record<string, SchedulerJobStatus>;
+  running?: boolean;
+}
+
+export interface SchedulerDiagnostics {
+  enabled: boolean;
+  active_launchd_plists: string[];
+  double_scheduling: boolean;
+  ffmpeg_available: boolean;
+}
+
+export function useSchedulerStatus(opts?: { intervalMs?: number }) {
+  return useQuery({
+    queryKey: ['scheduler', 'status'],
+    queryFn: () => get<SchedulerStatus>('/v1/scheduler/status'),
+    refetchInterval: opts?.intervalMs ?? 15_000,
+    staleTime: 5_000,
+  });
+}
+
+export function useSchedulerDiagnostics() {
+  return useQuery({
+    queryKey: ['scheduler', 'diagnostics'],
+    queryFn: () => get<SchedulerDiagnostics>('/v1/scheduler/diagnostics'),
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+}
+
+export interface ConnectorSyncResult {
+  connector: string;
+  ok: boolean;
+  queued: number;
+  error: string | null;
+  skipped_reason: string | null;
+}
+
+export function useSyncConnector() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => post<ConnectorSyncResult>(`/v1/connectors/${id}/sync`),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['connectors'] });
+      qc.invalidateQueries({ queryKey: ['scheduler', 'status'] });
+    },
+  });
+}
+
+export function useSyncAllConnectors() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => post<Record<string, ConnectorSyncResult>>('/v1/connectors/sync-all'),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['connectors'] });
+      qc.invalidateQueries({ queryKey: ['scheduler', 'status'] });
+    },
+  });
+}

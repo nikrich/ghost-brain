@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { app } from 'electron';
 
 export interface SidecarInfo {
   port: number;
@@ -16,22 +17,52 @@ interface FailureInfo {
   stderrTail: string;
 }
 
+interface SpawnTarget {
+  exe: string;
+  args: string[];
+  cwd: string;
+}
+
 const READY_LINE_RE = /^READY port=(\d+) token=([0-9a-f]+)/m;
 const STARTUP_TIMEOUT_MS = 10_000;
 const RESTART_BACKOFF_MS = 2_000;
 const MAX_RESTART_ATTEMPTS = 1;
 
-function pythonExecutable(cwd: string): string {
-  // Prefer the project venv if it exists at <cwd>/.venv/. PATH `python3` is
-  // whatever Electron inherited from the launching shell — often the system
-  // Python or another venv, neither of which has the project deps installed.
-  // The venv layout differs by platform: bin/ on macOS/Linux, Scripts/ on Win.
+function bundledSidecar(): SpawnTarget | null {
+  // In packaged builds the PyInstaller --onedir bundle is shipped via
+  // electron-builder `extraResources` at resources/sidecar/ghostbrain-api/.
+  const isWin = process.platform === 'win32';
+  const exeName = isWin ? 'ghostbrain-api.exe' : 'ghostbrain-api';
+  const exe = join(process.resourcesPath, 'sidecar', 'ghostbrain-api', exeName);
+  if (!existsSync(exe)) return null;
+  // The bundle is self-contained; cwd just needs to be writable / sane.
+  return { exe, args: [], cwd: app.getPath('userData') };
+}
+
+function devSidecar(repoRoot: string): SpawnTarget {
+  // Dev fallback: spawn `python -m ghostbrain.api` from the project venv.
   const isWin = process.platform === 'win32';
   const venvPython = isWin
-    ? join(cwd, '.venv', 'Scripts', 'python.exe')
-    : join(cwd, '.venv', 'bin', 'python');
-  if (existsSync(venvPython)) return venvPython;
-  return isWin ? 'python' : 'python3';
+    ? join(repoRoot, '.venv', 'Scripts', 'python.exe')
+    : join(repoRoot, '.venv', 'bin', 'python');
+  const exe = existsSync(venvPython) ? venvPython : isWin ? 'python' : 'python3';
+  return { exe, args: ['-m', 'ghostbrain.api'], cwd: repoRoot };
+}
+
+function resolveSpawnTarget(repoRoot: string): SpawnTarget {
+  // Packaged builds must use the bundled binary — they don't have a venv to
+  // fall back to. Dev builds use the venv. If a dev tester ever wants to
+  // exercise the packaged sidecar locally, run `pnpm build` first.
+  if (app.isPackaged) {
+    const bundled = bundledSidecar();
+    if (!bundled) {
+      throw new Error(
+        `Bundled sidecar not found at ${join(process.resourcesPath, 'sidecar', 'ghostbrain-api')}`,
+      );
+    }
+    return bundled;
+  }
+  return devSidecar(repoRoot);
 }
 
 export class Sidecar extends EventEmitter {
@@ -41,9 +72,22 @@ export class Sidecar extends EventEmitter {
   private restartAttempts = 0;
   private stdoutBuf = '';
   private stderrBuf = '';
+  // Flag the spawn-level exit handler reads to distinguish "we killed it" from
+  // "it died on us". Without this, stop() trips the auto-restart logic, which
+  // schedules a spawn() 2s later that collides with the fresh process started
+  // by the next start() call.
+  private intentionalStop = false;
+  private restartTimer: NodeJS.Timeout | null = null;
 
-  constructor(private readonly cwd: string) {
+  constructor(
+    private readonly cwd: string,
+    private readonly options: { schedulerEnabled?: boolean } = {},
+  ) {
     super();
+  }
+
+  setSchedulerEnabled(enabled: boolean): void {
+    this.options.schedulerEnabled = enabled;
   }
 
   getStatus(): Status {
@@ -67,11 +111,16 @@ export class Sidecar extends EventEmitter {
   }
 
   async stop(): Promise<void> {
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = null;
+    }
     if (!this.proc) {
       this.status = 'stopped';
       return;
     }
     const proc = this.proc;
+    this.intentionalStop = true;
     proc.kill('SIGTERM');
     await new Promise<void>((resolve) => {
       const timer = setTimeout(() => {
@@ -90,14 +139,32 @@ export class Sidecar extends EventEmitter {
 
   private spawn(): Promise<SidecarInfo> {
     return new Promise((resolve, reject) => {
-      const exe = pythonExecutable(this.cwd);
-      const proc = spawn(exe, ['-m', 'ghostbrain.api'], {
-        cwd: this.cwd,
-        env: { ...process.env, PYTHONUNBUFFERED: '1' },
+      let target: SpawnTarget;
+      try {
+        target = resolveSpawnTarget(this.cwd);
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
+        this.fail(reason);
+        reject(err instanceof Error ? err : new Error(reason));
+        return;
+      }
+      const { exe, args, cwd } = target;
+      const proc = spawn(exe, args, {
+        cwd,
+        env: {
+          ...process.env,
+          PYTHONUNBUFFERED: '1',
+          GHOSTBRAIN_SCHEDULER_ENABLED: this.options.schedulerEnabled ? '1' : '0',
+        },
       });
       this.proc = proc;
       this.stdoutBuf = '';
       this.stderrBuf = '';
+      this.intentionalStop = false;
+      if (this.restartTimer) {
+        clearTimeout(this.restartTimer);
+        this.restartTimer = null;
+      }
 
       const timeout = setTimeout(() => {
         proc.kill();
@@ -133,6 +200,12 @@ export class Sidecar extends EventEmitter {
       });
 
       proc.on('exit', (code, signal) => {
+        if (this.intentionalStop) {
+          // stop() initiated this. Don't fail, don't auto-restart. The matching
+          // once('exit') in stop() resolves the shutdown promise.
+          clearTimeout(timeout);
+          return;
+        }
         if (this.status !== 'ready') {
           // Failed during startup
           clearTimeout(timeout);
@@ -146,7 +219,8 @@ export class Sidecar extends EventEmitter {
         this.status = 'failed';
         if (this.restartAttempts < MAX_RESTART_ATTEMPTS) {
           this.restartAttempts++;
-          setTimeout(() => {
+          this.restartTimer = setTimeout(() => {
+            this.restartTimer = null;
             this.spawn().catch(() => {
               // already emitted 'failed'
             });

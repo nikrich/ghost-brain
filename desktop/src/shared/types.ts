@@ -26,6 +26,8 @@ export interface Settings {
   transcriptModel: TranscriptModel;
 
   folderStructure: FolderStructure;
+
+  schedulerEnabled: boolean;
 }
 
 export interface GbBridge {
@@ -53,6 +55,9 @@ export interface GbBridge {
   };
   sidecar: {
     retry(): Promise<{ ok: true } | { ok: false; error: string }>;
+  };
+  tray: {
+    setFailing(names: string[]): Promise<{ ok: true } | { ok: false; error: string }>;
   };
   on(channel: 'nav:settings', listener: () => void): () => void;
   on(channel: 'sidecar:ready', listener: () => void): () => void;

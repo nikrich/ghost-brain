@@ -22,6 +22,8 @@ const defaultSettings: Settings = {
   transcriptModel: 'whisper-large-v3',
 
   folderStructure: 'by-source',
+
+  schedulerEnabled: false,
 };
 
 const stubBridge: GbBridge = {
@@ -37,6 +39,7 @@ const stubBridge: GbBridge = {
   platform: 'darwin',
   api: { request: (async () => ({ ok: true, data: null })) as GbBridge['api']['request'] },
   sidecar: { retry: async () => ({ ok: true }) },
+  tray: { setFailing: async () => ({ ok: true }) },
   on: (() => () => {}) as GbBridge['on'],
 };
 

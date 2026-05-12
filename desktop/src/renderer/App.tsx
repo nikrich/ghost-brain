@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useSettings } from './stores/settings';
 import { useNavigation } from './stores/navigation';
 import { useSidecar } from './stores/sidecar';
+import { useSchedulerStatus } from './lib/api/hooks';
 import { WindowChrome } from './components/WindowChrome';
 import { Sidebar } from './components/Sidebar';
 import { StatusBar } from './components/StatusBar';
@@ -47,6 +48,23 @@ export default function App() {
       offFailed();
     };
   }, [setReady, setFailed]);
+
+  // Mirror scheduler health into the tray so the user sees the alert dot even
+  // when the main window is hidden. The query polls every 15s; when scheduler
+  // is off we still clear any stale failing state on mount.
+  const schedulerStatus = useSchedulerStatus({ intervalMs: 15_000 });
+  useEffect(() => {
+    if (sidecarStatus !== 'ready') return;
+    const data = schedulerStatus.data;
+    if (!data || !data.enabled) {
+      void window.gb.tray.setFailing([]);
+      return;
+    }
+    const failing = Object.values(data.jobs)
+      .filter((j) => j.last_run_ok === false)
+      .map((j) => j.name);
+    void window.gb.tray.setFailing(failing);
+  }, [schedulerStatus.data, sidecarStatus]);
 
   if (!ready) {
     return <div className="bg-paper text-ink-2 grid h-full place-items-center">…</div>;
