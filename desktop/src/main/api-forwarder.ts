@@ -20,8 +20,11 @@ export async function forward<T = unknown>(
         Authorization: `Bearer ${info.token}`,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
-      // 30s timeout via AbortController
-      signal: AbortSignal.timeout(30_000),
+      // 5min ceiling. /v1/answer (RAG + LLM synthesis) and the first /v1/search
+      // call (cold-loads sentence-transformers) can legitimately take a minute
+      // or two. Everything else returns in milliseconds; we'd rather wait too
+      // long than chop off a genuine answer.
+      signal: AbortSignal.timeout(300_000),
     });
     if (!res.ok) {
       const text = await res.text();
