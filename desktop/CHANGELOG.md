@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/nikrich/ghost-brain/compare/v0.1.3...v0.1.4) (2026-05-13)
+
+
+### Bug Fixes
+
+* **desktop:** Make Obsidian wikilinks clickable in rendered markdown ([e199432](https://github.com/nikrich/ghost-brain/commit/e199432b06b6f8e010e94777ba8daade4699bd80))
+
 ## [0.1.1](https://github.com/nikrich/ghost-brain/compare/v0.1.0...v0.1.1) (2026-05-12)
 
 
