@@ -25,7 +25,12 @@ from ghostbrain.paths import vault_path
 
 log = logging.getLogger("ghostbrain.api.answer")
 
-PER_NOTE_CHAR_CAP = 3000
+# 3KB chops the body of a typical 18-minute meeting transcript at ~6
+# minutes in — the LLM then summarises only what it saw and the user
+# rightly complains the answer is shallow. Sonnet has a 200K context;
+# 8 sources × 16KB = 128KB, well within budget. Trade extra prompt
+# tokens for actually-useful answers.
+PER_NOTE_CHAR_CAP = 16000
 DEFAULT_MODEL = "sonnet"
 PROMPT_TEMPLATE = """You are answering a question using ONLY the user's own vault notes below.
 The user is a software engineer working across four contexts: sanlam (Sanlam Digital), codeship (codeship.tech client + product), reducedrecipes, and personal projects.
