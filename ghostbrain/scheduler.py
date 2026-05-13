@@ -135,14 +135,33 @@ class JobStatus:
 
 
 def _launchd_plists() -> list[str]:
-    """Active launchd plist names in ~/Library/LaunchAgents matching ghostbrain."""
-    agent_dir = Path.home() / "Library" / "LaunchAgents"
-    if not agent_dir.exists():
+    """Currently *loaded* ghostbrain launchd jobs.
+
+    The earlier version listed plist files on disk, which is wrong: unloaded
+    plists are harmless (they don't fire). What actually causes
+    double-scheduling is jobs that are loaded into launchd. `launchctl list`
+    reports loaded jobs by their Label key. Disk-resident-but-unloaded plists
+    are correctly treated as not-a-conflict.
+    """
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["launchctl", "list"],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError):
         return []
-    return sorted(
-        p.name
-        for p in agent_dir.glob("com.ghostbrain.*.plist")
-    )
+    if result.returncode != 0:
+        return []
+    labels: list[str] = []
+    for line in (result.stdout or "").splitlines()[1:]:  # skip header
+        parts = line.split("\t")
+        if len(parts) < 3:
+            continue
+        label = parts[2].strip()
+        if label.startswith("com.ghostbrain."):
+            labels.append(label)
+    return sorted(labels)
 
 
 def diagnostics() -> dict:
