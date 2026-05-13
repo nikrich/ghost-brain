@@ -457,7 +457,9 @@ function AgendaItemRow({ time, dur, title, people, status, cta }: AgendaItemRowP
         <div className="overflow-hidden text-ellipsis whitespace-nowrap text-13 font-medium text-ink-0">
           {title}
         </div>
-        <div className="font-mono text-10 text-ink-2">with {people.join(', ')}</div>
+        {people.length > 0 && (
+          <div className="font-mono text-10 text-ink-2">with {people.join(', ')}</div>
+        )}
       </div>
       {cta}
     </div>
