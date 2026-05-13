@@ -1,11 +1,28 @@
-# Ghost Brain
+<h1 align="center">Poltergeist</h1>
 
-<img width="1510" height="864" alt="image" src="https://github.com/user-attachments/assets/28bd797b-9491-44be-9326-0bd5684eaa02" />
+<p align="center"><em>a quiet brain for your loud apps</em></p>
 
-A self-hosted personal knowledge automation system. Captures activity from
-your tools (Claude Code & Desktop, GitHub, Jira, Confluence, Slack, Gmail,
-Teams, Calendar) into an Obsidian vault, classifies and summarizes it with
-an LLM, and serves it back as a daily digest.
+<p align="center">
+  <a href="https://github.com/nikrich/ghost-brain/actions/workflows/release.yml"><img alt="release pipeline" src="https://github.com/nikrich/ghost-brain/actions/workflows/release.yml/badge.svg"></a>
+  <a href="https://github.com/nikrich/ghost-brain/releases/latest"><img alt="latest release" src="https://img.shields.io/github/v/release/nikrich/ghost-brain?display_name=tag&label=release&color=C5FF3D&labelColor=0E0F12"></a>
+  <a href="https://github.com/nikrich/ghost-brain/releases"><img alt="downloads" src="https://img.shields.io/github/downloads/nikrich/ghost-brain/total?color=C5FF3D&labelColor=0E0F12"></a>
+  <img alt="python" src="https://img.shields.io/badge/python-3.11%2B-3776ab?logo=python&logoColor=white&labelColor=0E0F12">
+  <img alt="platform" src="https://img.shields.io/badge/platform-macOS-f2f3f5?logo=apple&logoColor=white&labelColor=0E0F12">
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-C5FF3D?labelColor=0E0F12">
+</p>
+
+<p align="center">
+  <img width="1510" height="864" alt="poltergeist desktop" src="https://github.com/user-attachments/assets/28bd797b-9491-44be-9326-0bd5684eaa02" />
+</p>
+
+Poltergeist quietly haunts every app you use — Claude Code & Desktop,
+GitHub, Jira, Confluence, Slack, Gmail, Teams, Calendar — pulls every
+passing thought into your Obsidian vault, classifies and summarizes it
+with an LLM, and serves it back as a daily digest.
+
+> **A note on naming.** The CLI, Python package, and vault directory still
+> use the legacy `ghostbrain` namespace (e.g. `ghostbrain-worker`,
+> `~/ghostbrain/vault/`). The product itself is Poltergeist.
 
 > **Status: alpha.** Phases 1–7 + 11 (Calendar) of the
 > [build sequence](./spec/SPEC.md#section-9--build-sequence-phased) are
@@ -17,7 +34,7 @@ an LLM, and serves it back as a daily digest.
 ## Why
 
 Most "second brain" tools are either manual (you stop adding things) or
-SaaS (your private context lives on someone else's servers). Ghost Brain is
+SaaS (your private context lives on someone else's servers). Poltergeist is
 local-first, file-based, uses your existing Claude subscription for LLM calls,
 and adds new sources via a small connector pattern.
 
