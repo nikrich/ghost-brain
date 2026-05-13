@@ -70,10 +70,14 @@ export function buildAppMenu(): void {
         ? [
             { role: 'reload' as const },
             { role: 'forceReload' as const },
-            { role: 'toggleDevTools' as const },
             { type: 'separator' as const },
           ]
         : []),
+      // DevTools available in all builds so users can inspect UI issues
+      // and we don't need a debug build to diagnose layout/CSS bugs.
+      // macOS default accelerator: Cmd+Option+I.
+      { role: 'toggleDevTools' as const },
+      { type: 'separator' as const },
       { role: 'resetZoom' },
       { role: 'zoomIn' },
       { role: 'zoomOut' },

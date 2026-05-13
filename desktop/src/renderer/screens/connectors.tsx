@@ -18,7 +18,7 @@ import {
 import { SkeletonRows } from '../components/SkeletonRows';
 import { PanelEmpty } from '../components/PanelEmpty';
 import { PanelError } from '../components/PanelError';
-import { stub } from '../stores/toast';
+import { stub, toast } from '../stores/toast';
 import { formatRelativeTime } from '../lib/format';
 
 type Filter = 'all' | ConnectorState;
@@ -81,7 +81,26 @@ export function ConnectorsScreen() {
                   stub(3);
                   return;
                 }
-                syncAll.mutate();
+                syncAll.mutate(undefined, {
+                  onSuccess: (results) => {
+                    const ok = Object.values(results).filter((r) => r.ok);
+                    const failed = Object.values(results).filter((r) => !r.ok);
+                    const queued = ok.reduce((s, r) => s + (r.queued ?? 0), 0);
+                    if (failed.length === 0) {
+                      toast.info(
+                        queued > 0
+                          ? `Sync complete · ${queued} new event${queued === 1 ? '' : 's'}`
+                          : 'Sync complete · everything already up to date',
+                      );
+                    } else {
+                      toast.error(
+                        `${failed.length} connector${failed.length === 1 ? '' : 's'} failed: ${failed.map((f) => f.connector).join(', ')}`,
+                      );
+                    }
+                  },
+                  onError: (e) =>
+                    toast.error(e instanceof Error ? e.message : 'sync failed'),
+                });
               }}
               disabled={syncAll.isPending}
             >
@@ -342,7 +361,21 @@ function ConnectorDetailPanel({ c }: ConnectorDetailProps) {
                     stub(3);
                     return;
                   }
-                  syncOne.mutate(c.id);
+                  syncOne.mutate(c.id, {
+                    onSuccess: (r) => {
+                      if (r.ok) {
+                        toast.info(
+                          r.queued > 0
+                            ? `${c.displayName}: queued ${r.queued} new event${r.queued === 1 ? '' : 's'}`
+                            : `${c.displayName}: up to date`,
+                        );
+                      } else {
+                        toast.error(`${c.displayName}: ${r.error ?? 'sync failed'}`);
+                      }
+                    },
+                    onError: (e) =>
+                      toast.error(`${c.displayName}: ${e instanceof Error ? e.message : 'sync failed'}`),
+                  });
                 }}
                 disabled={syncOne.isPending}
               >

@@ -24,6 +24,17 @@ from ghostbrain.paths import queue_dir, state_dir, vault_path
 log = logging.getLogger("ghostbrain.connectors.runner")
 
 
+def _audit(event_type: str, name: str, **fields: Any) -> None:
+    """Best-effort write to the worker audit log. Swallows failures (e.g.,
+    vault unmounted, disk full) so an audit hiccup never propagates into
+    the scheduler's status."""
+    try:
+        from ghostbrain.worker.audit import audit_log
+        audit_log(event_type, name, **fields)
+    except Exception:  # noqa: BLE001
+        log.exception("audit_log failed for %s/%s", event_type, name)
+
+
 @dataclass
 class RunResult:
     """Structured outcome of one connector invocation. Stored in scheduler
@@ -81,6 +92,7 @@ def run_connector(
         q, s = ensure_dirs()
         connector = build(routing, q, s)
         if connector is None:
+            _audit("connector_skipped", name, reason="not_configured")
             return RunResult(
                 connector=name,
                 ok=True,
@@ -89,6 +101,7 @@ def run_connector(
                 skipped_reason="not configured",
             )
         if not connector.health_check():  # type: ignore[attr-defined]
+            _audit("connector_health_failed", name)
             return RunResult(
                 connector=name,
                 ok=False,
@@ -98,6 +111,7 @@ def run_connector(
                 error_type="HealthCheckFailed",
             )
         queued = connector.run()  # type: ignore[attr-defined]
+        _audit("connector_run", name, events_queued=int(queued))
         return RunResult(
             connector=name,
             ok=True,
@@ -107,6 +121,7 @@ def run_connector(
         )
     except Exception as e:  # noqa: BLE001 — we want to capture EVERY failure
         log.exception("connector %s crashed", name)
+        _audit("connector_crashed", name, error=f"{type(e).__name__}: {e}")
         return RunResult(
             connector=name,
             ok=False,
