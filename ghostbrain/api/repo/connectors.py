@@ -76,33 +76,16 @@ _INBOX_DIR: dict[str, str] = {
 }
 
 
-def _connectors_root() -> Path:
-    """Locate ghostbrain/connectors/ as installed."""
-    # Resolve via the existing module — works regardless of install location.
-    import ghostbrain.connectors
-
-    return Path(ghostbrain.connectors.__file__).parent
-
-
 def _list_connector_ids() -> list[str]:
-    """Subdirectories of ghostbrain/connectors/ that look like real
-    user-facing connectors (have an __init__.py, not in _HIDDEN, not _base,
-    not __pycache__)."""
-    root = _connectors_root()
-    if not root.exists():
-        return []
-    ids = []
-    for child in root.iterdir():
-        if not child.is_dir():
-            continue
-        if child.name.startswith("_") or child.name == "__pycache__":
-            continue
-        if child.name in _HIDDEN:
-            continue
-        if not (child / "__init__.py").exists():
-            continue
-        ids.append(child.name)
-    return sorted(ids)
+    """Connector IDs we ship, minus any hidden infrastructure-only ones.
+
+    Sourced from the static `_DISPLAY` dict so this works the same way in
+    development (source tree on disk) and packaged builds (PyInstaller-frozen
+    bundle, where filesystem-scanning `ghostbrain/connectors/` finds nothing
+    because PyInstaller doesn't preserve the source-layout package
+    directories for runtime introspection).
+    """
+    return sorted(cid for cid in _DISPLAY if cid not in _HIDDEN)
 
 
 def _has_inbox_captures(connector_id: str) -> bool:

@@ -5,6 +5,7 @@ import { Lucide } from '../components/Lucide';
 import { Pill } from '../components/Pill';
 import { Eyebrow } from '../components/Eyebrow';
 import { Toggle } from '../components/Toggle';
+import { useNavigation } from '../stores/navigation';
 import type { Connector, ConnectorDetail, ConnectorState } from '../../shared/api-types';
 import {
   useConnector,
@@ -39,6 +40,7 @@ export function ConnectorsScreen() {
   const scheduler = useSchedulerStatus({ intervalMs: 15_000 });
   const diagnostics = useSchedulerDiagnostics();
   const syncAll = useSyncAllConnectors();
+  const setActive = useNavigation((s) => s.setActive);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
 
@@ -62,7 +64,12 @@ export function ConnectorsScreen() {
     <div className="flex flex-1 flex-col overflow-hidden bg-paper">
       <TopBar
         title="connectors"
-        subtitle="6 of 7 · syncing live"
+        subtitle={(() => {
+          const total = connectors.data?.length ?? 0;
+          const live = connectors.data?.filter((c) => c.state === 'on').length ?? 0;
+          if (!connectors.data) return '…';
+          return `${live} of ${total} · ${schedulerEnabled ? 'syncing live' : 'paused'}`;
+        })()}
         right={
           <div className="flex gap-2">
             <Btn
@@ -85,7 +92,7 @@ export function ConnectorsScreen() {
               size="sm"
               // intentional fixed color: icon must read dark on the always-bright neon button
               icon={<Lucide name="plus" size={13} color="#0E0F12" />}
-              onClick={() => stub(3)}
+              onClick={() => setActive('setup')}
             >
               add connector
             </Btn>
