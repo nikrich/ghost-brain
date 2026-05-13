@@ -6,6 +6,7 @@ import { useMeeting } from '../stores/meeting';
 import { useDaily, useMeetings } from '../lib/api/hooks';
 import { useSettings } from '../stores/settings';
 import { isMac } from '../lib/platform';
+import { APP_VERSION } from '../lib/version';
 
 const NAV_ITEMS: Array<{ id: ScreenId; icon: string; label: string }> = [
   { id: 'today', icon: 'sparkles', label: 'today' },
@@ -57,7 +58,7 @@ export function Sidebar() {
             poltergeist
           </span>
           <span className="font-mono text-9 uppercase tracking-eyebrow text-ink-2">
-            v 0.1.0 · haunting
+            v {APP_VERSION} · haunting
           </span>
         </div>
       </div>

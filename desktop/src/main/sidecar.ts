@@ -149,10 +149,18 @@ export class Sidecar extends EventEmitter {
         return;
       }
       const { exe, args, cwd } = target;
+      // macOS launchd hands the .app a stripped PATH (`/usr/bin:/bin:/usr/sbin:/sbin`),
+      // so the sidecar can't find `claude`, `whisper-cli`, `gh`, or `ffmpeg` —
+      // all of which live in `/opt/homebrew/bin` (Apple Silicon) or `/usr/local/bin`
+      // (Intel + manual installs). Prepend those so the sidecar can shell out to
+      // them regardless of how the app was launched (Dock, Finder, terminal).
+      const extraPath = ['/opt/homebrew/bin', '/usr/local/bin'].join(':');
+      const inheritedPath = process.env.PATH ?? '';
       const proc = spawn(exe, args, {
         cwd,
         env: {
           ...process.env,
+          PATH: inheritedPath ? `${extraPath}:${inheritedPath}` : extraPath,
           PYTHONUNBUFFERED: '1',
           GHOSTBRAIN_SCHEDULER_ENABLED: this.options.schedulerEnabled ? '1' : '0',
         },

@@ -12,6 +12,7 @@ import {
 } from '../lib/api/hooks';
 import { toast } from '../stores/toast';
 import { HOTKEYS, format as formatShortcut } from '../lib/shortcuts';
+import { APP_VERSION } from '../lib/version';
 import type {
   FolderStructure,
   LlmProvider,
@@ -57,7 +58,7 @@ export function SettingsScreen() {
   const [section, setSection] = useState<SectionId>('display');
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-paper">
-      <TopBar title="settings" subtitle="poltergeist v 0.1.0" />
+      <TopBar title="settings" subtitle={`poltergeist v ${APP_VERSION}`} />
       <div className="grid flex-1 grid-cols-[200px_1fr] overflow-hidden">
         <nav className="overflow-y-auto border-r border-hairline px-2 py-4">
           {SECTIONS.map((s) => (
