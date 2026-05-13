@@ -57,12 +57,23 @@ export function TodayScreen() {
   const unreadCount =
     captures.data?.items.filter((c) => c.unread).length ?? 0;
 
+  // Format today's date for the TopBar subtitle. Uses the user's locale so
+  // the strings feel native; lowercase to match the rest of the UI tone.
+  const todaySubtitle = new Date()
+    .toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    })
+    .toLowerCase()
+    .replace(/,/g, ' ·');
+
   return (
     <div className="flex-1 overflow-y-auto bg-paper">
       <AskPanel open={askOpen} onClose={() => setAskOpen(false)} />
       <TopBar
         title="today"
-        subtitle="thursday · may 8"
+        subtitle={todaySubtitle}
         right={
           <div className="flex gap-2">
             <Btn
