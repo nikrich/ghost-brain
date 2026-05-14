@@ -3,8 +3,9 @@ import { Ghost } from './Ghost';
 import { Eyebrow } from './Eyebrow';
 import { useNavigation, type ScreenId } from '../stores/navigation';
 import { useMeeting } from '../stores/meeting';
-import { useDaily, useMeetings } from '../lib/api/hooks';
+import { useCaptures, useDaily, useMeetings } from '../lib/api/hooks';
 import { useSettings } from '../stores/settings';
+import { unreadCount as countUnread, useReadCaptures } from '../stores/read-captures';
 import { isMac } from '../lib/platform';
 import { APP_VERSION } from '../lib/version';
 
@@ -39,6 +40,12 @@ export function Sidebar() {
   const { phase } = useMeeting();
   const daily = useDaily({ limit: 1 });
   const meetings = useMeetings({ limit: 1 });
+  // Same query key as the capture screen — React Query dedupes, so the
+  // sidebar badge stays in sync with the capture list without a second
+  // request.
+  const captures = useCaptures();
+  const readSet = useReadCaptures((s) => s.read);
+  const captureUnread = countUnread(captures.data?.items ?? [], readSet);
   const vaultPath = useSettings((s) => s.vaultPath);
   const vaultFolders: Array<{ id: ScreenId; icon: string; label: string; count: number | null }> = [
     { id: 'daily', icon: 'folder', label: 'Daily', count: daily.data?.total ?? null },
@@ -77,8 +84,8 @@ export function Sidebar() {
             badge={
               item.id === 'meetings' && phase === 'recording' ? (
                 <RecordingDot />
-              ) : item.id === 'capture' ? (
-                '12'
+              ) : item.id === 'capture' && captureUnread > 0 ? (
+                String(captureUnread)
               ) : null
             }
           />

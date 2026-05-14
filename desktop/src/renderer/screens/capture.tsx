@@ -10,6 +10,7 @@ import { SkeletonRows } from '../components/SkeletonRows';
 import { PanelEmpty } from '../components/PanelEmpty';
 import { PanelError } from '../components/PanelError';
 import { stub, toast } from '../stores/toast';
+import { unreadCount as countUnread, useReadCaptures } from '../stores/read-captures';
 
 function chipClass(active: boolean): string {
   return `cursor-pointer rounded-sm border px-[10px] py-1 font-mono text-11 ${
@@ -50,8 +51,22 @@ export function CaptureScreen() {
     }
   }, [captures.data, selected]);
 
-  const unreadCount = captures.data?.items.filter((c) => c.unread).length ?? 0;
+  const readSet = useReadCaptures((s) => s.read);
+  const markRead = useReadCaptures((s) => s.markRead);
+  const unreadCount = countUnread(captures.data?.items ?? [], readSet);
   const totalToday = captures.data?.total ?? 0;
+
+  const handleMarkAllRead = () => {
+    const ids = (captures.data?.items ?? [])
+      .filter((c) => c.unread && !readSet.has(c.id))
+      .map((c) => c.id);
+    if (ids.length === 0) {
+      toast.info('all caught up — nothing to mark');
+      return;
+    }
+    markRead(ids);
+    toast.info(`marked ${ids.length} as read`);
+  };
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-paper">
@@ -64,7 +79,7 @@ export function CaptureScreen() {
               variant="ghost"
               size="sm"
               icon={<Lucide name="check-check" size={13} />}
-              onClick={() => stub(3)}
+              onClick={handleMarkAllRead}
             >
               mark all read
             </Btn>
@@ -122,8 +137,16 @@ export function CaptureScreen() {
             <CaptureRow
               key={c.id}
               c={c}
+              effectiveUnread={c.unread && !readSet.has(c.id)}
               selected={selected === c.id}
-              onClick={() => setSelected(c.id)}
+              onClick={() => {
+                setSelected(c.id);
+                // Selecting a row marks it read — matches the mental model of
+                // "I've seen this now". The dot disappears and the badge ticks down.
+                if (c.unread && !readSet.has(c.id)) {
+                  markRead([c.id]);
+                }
+              }}
             />
           ))}
         </div>
@@ -152,11 +175,12 @@ export function CaptureScreen() {
 
 interface CaptureRowProps {
   c: CaptureSummary;
+  effectiveUnread: boolean;
   selected: boolean;
   onClick: () => void;
 }
 
-function CaptureRow({ c, selected, onClick }: CaptureRowProps) {
+function CaptureRow({ c, effectiveUnread, selected, onClick }: CaptureRowProps) {
   return (
     <button
       type="button"
@@ -167,7 +191,7 @@ function CaptureRow({ c, selected, onClick }: CaptureRowProps) {
     >
       <span
         className={`h-[6px] w-[6px] justify-self-center rounded-full ${
-          c.unread ? 'bg-neon' : 'bg-transparent'
+          effectiveUnread ? 'bg-neon' : 'bg-transparent'
         }`}
       />
       <img
@@ -179,7 +203,7 @@ function CaptureRow({ c, selected, onClick }: CaptureRowProps) {
         <div className="flex items-baseline gap-2">
           <span
             className={`overflow-hidden text-ellipsis whitespace-nowrap text-13 text-ink-0 ${
-              c.unread ? 'font-medium' : 'font-normal'
+              effectiveUnread ? 'font-medium' : 'font-normal'
             }`}
           >
             {c.title}
