@@ -28,7 +28,21 @@ export async function forward<T = unknown>(
     });
     if (!res.ok) {
       const text = await res.text();
-      return { ok: false, error: `HTTP ${res.status}: ${text.slice(0, 500)}` };
+      // FastAPI errors come back as ``{"detail": "..."}`` — extract that so
+      // the renderer can show a clean message instead of a raw JSON
+      // envelope. The 412 recorder routing gate is the motivating case:
+      // the body explains exactly how to fix it, and pasting it verbatim
+      // into a toast is more useful than ``HTTP 412: {"detail":"..."}``.
+      let message = text.slice(0, 500);
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed && typeof parsed.detail === 'string') {
+          message = parsed.detail;
+        }
+      } catch {
+        // Non-JSON body — fall through with the trimmed text.
+      }
+      return { ok: false, error: message, status: res.status };
     }
     const data = (await res.json()) as T;
     return { ok: true, data };

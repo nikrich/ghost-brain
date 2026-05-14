@@ -9,9 +9,9 @@ import { Ghost } from '../components/Ghost';
 import { useMeeting } from '../stores/meeting';
 import { useNavigation } from '../stores/navigation';
 import { useNoteView } from '../stores/note-view';
-import { stub } from '../stores/toast';
+import { stub, toast } from '../stores/toast';
 import { useAgenda, useMeetings } from '../lib/api/hooks';
-import type { AgendaItem, PastMeeting } from '../../shared/api-types';
+import type { AgendaItem, PastMeeting, StartRecordingRequest } from '../../shared/api-types';
 import { SkeletonRows } from '../components/SkeletonRows';
 import { PanelEmpty } from '../components/PanelEmpty';
 import { PanelError } from '../components/PanelError';
@@ -86,11 +86,26 @@ export function MeetingsScreen() {
     return '…';
   })();
 
-  const handleStartForEvent = useCallback(
-    () => start(upcoming ? { title: upcoming.title } : {}),
-    [start, upcoming],
+  // Start failures used to surface as "Uncaught (in promise)" in the
+  // devtools console — clicking the button silently did nothing. Wrap
+  // every call site so the user sees the underlying problem (most
+  // commonly the recorder's 412 audio-routing gate explaining how to
+  // fix the macOS output device).
+  const startWithToast = useCallback(
+    async (opts: StartRecordingRequest) => {
+      try {
+        await start(opts);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Failed to start recording');
+      }
+    },
+    [start],
   );
-  const handleStartManual = useCallback(() => start({}), [start]);
+  const handleStartForEvent = useCallback(
+    () => startWithToast(upcoming ? { title: upcoming.title } : {}),
+    [startWithToast, upcoming],
+  );
+  const handleStartManual = useCallback(() => startWithToast({}), [startWithToast]);
 
   return (
     <div className="flex-1 overflow-y-auto bg-paper">

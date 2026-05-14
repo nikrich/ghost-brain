@@ -51,7 +51,10 @@ export interface GbBridge {
       method: 'GET' | 'POST',
       path: string,
       body?: unknown,
-    ): Promise<{ ok: true; data: T } | { ok: false; error: string }>;
+    ): Promise<
+      | { ok: true; data: T }
+      | { ok: false; error: string; status?: number }
+    >;
   };
   sidecar: {
     retry(): Promise<{ ok: true } | { ok: false; error: string }>;
