@@ -3,9 +3,9 @@
 <p align="center"><em>a quiet brain for your loud apps</em></p>
 
 <p align="center">
-  <a href="https://github.com/nikrich/ghost-brain/actions/workflows/release.yml"><img alt="release pipeline" src="https://github.com/nikrich/ghost-brain/actions/workflows/release.yml/badge.svg"></a>
-  <a href="https://github.com/nikrich/ghost-brain/releases/latest"><img alt="latest release" src="https://img.shields.io/github/v/release/nikrich/ghost-brain?display_name=tag&label=release&color=C5FF3D&labelColor=0E0F12"></a>
-  <a href="https://github.com/nikrich/ghost-brain/releases"><img alt="downloads" src="https://img.shields.io/github/downloads/nikrich/ghost-brain/total?color=C5FF3D&labelColor=0E0F12"></a>
+  <a href="https://github.com/nikrich/poltergeist/actions/workflows/release.yml"><img alt="release pipeline" src="https://github.com/nikrich/poltergeist/actions/workflows/release.yml/badge.svg"></a>
+  <a href="https://github.com/nikrich/poltergeist/releases/latest"><img alt="latest release" src="https://img.shields.io/github/v/release/nikrich/poltergeist?display_name=tag&label=release&color=C5FF3D&labelColor=0E0F12"></a>
+  <a href="https://github.com/nikrich/poltergeist/releases"><img alt="downloads" src="https://img.shields.io/github/downloads/nikrich/poltergeist/total?color=C5FF3D&labelColor=0E0F12"></a>
   <img alt="python" src="https://img.shields.io/badge/python-3.11%2B-3776ab?logo=python&logoColor=white&labelColor=0E0F12">
   <img alt="platform" src="https://img.shields.io/badge/platform-macOS-f2f3f5?logo=apple&logoColor=white&labelColor=0E0F12">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-C5FF3D?labelColor=0E0F12">

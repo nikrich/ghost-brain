@@ -103,7 +103,7 @@ export function buildAppMenu(): void {
     submenu: [
       {
         label: 'Open project on GitHub',
-        click: () => void shell.openExternal('https://github.com/nikrich/ghost-brain'),
+        click: () => void shell.openExternal('https://github.com/nikrich/poltergeist'),
       },
     ],
   };

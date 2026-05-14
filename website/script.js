@@ -31,8 +31,8 @@
   // the release list and pick the first one that actually has a .dmg
   // attached. Everything keeps falling back to /releases/latest if anything
   // here goes sideways (offline, rate-limited, blocked, etc.).
-  const RELEASES_URL = 'https://api.github.com/repos/nikrich/ghost-brain/releases?per_page=10';
-  const FALLBACK_HREF = 'https://github.com/nikrich/ghost-brain/releases/latest';
+  const RELEASES_URL = 'https://api.github.com/repos/nikrich/poltergeist/releases?per_page=10';
+  const FALLBACK_HREF = 'https://github.com/nikrich/poltergeist/releases/latest';
 
   const pickDmg = (releases) => {
     for (const r of releases) {
