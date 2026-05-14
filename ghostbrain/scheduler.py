@@ -375,38 +375,74 @@ class Scheduler:
                 log.exception("failure notification callback raised")
         return result
 
+    # Backoff schedule for crashed daemons. Doubles each restart and caps
+    # at 5 minutes — long enough that a persistently-broken daemon doesn't
+    # hot-loop and burn battery, short enough that real crashes recover
+    # within minutes rather than hours.
+    _DAEMON_BACKOFF_S: tuple[int, ...] = (5, 10, 30, 60, 120, 300)
+
     async def _daemon_wrapper(
         self,
         name: str,
         factory: Callable[[asyncio.Event], Awaitable[None]],
     ) -> None:
+        """Run a daemon and restart it forever on crash.
+
+        Before the restart loop existed, a single FileNotFoundError in the
+        worker's fail-move killed the daemon and stranded 900+ events in
+        pending/. Auto-restart with capped exponential backoff means any
+        unhandled exception — known race or future surprise — recovers
+        within minutes instead of requiring a sidecar restart.
+
+        Clean voluntary exits (factory returns normally) and stop signals
+        end the loop. CancelledError propagates so asyncio shutdown stays
+        intact.
+        """
         assert self._stop_event is not None
+        attempt = 0
+        while not self._stop_event.is_set():
+            with self._lock:
+                self._status[name].running = True
+                self._status[name].last_run_ok = True
+            try:
+                await factory(self._stop_event)
+                # Voluntary clean exit — no restart.
+                break
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:  # noqa: BLE001
+                log.exception(
+                    "daemon %s crashed (attempt %d); will restart", name, attempt + 1,
+                )
+                with self._lock:
+                    status = self._status[name]
+                    status.last_run_ok = False
+                    status.last_error = str(e)
+                    status.last_error_type = type(e).__name__
+                    status.consecutive_failures += 1
+                    if status.failed_since is None:
+                        status.failed_since = time.time()
+                    if self._notify_cb:
+                        try:
+                            self._notify_cb(name, str(e))
+                        except Exception:  # noqa: BLE001
+                            log.exception("failure notification callback raised")
+                self._save_status()
+
+                delay = self._DAEMON_BACKOFF_S[
+                    min(attempt, len(self._DAEMON_BACKOFF_S) - 1)
+                ]
+                attempt += 1
+                # Respect stop during the backoff sleep so shutdown stays snappy.
+                try:
+                    await asyncio.wait_for(self._stop_event.wait(), timeout=delay)
+                    break  # stop signaled during backoff
+                except asyncio.TimeoutError:
+                    pass
+
         with self._lock:
-            self._status[name].running = True
-            self._status[name].last_run_ok = True
-        try:
-            await factory(self._stop_event)
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:  # noqa: BLE001
-            log.exception("daemon %s crashed", name)
-            with self._lock:
-                status = self._status[name]
-                status.last_run_ok = False
-                status.last_error = str(e)
-                status.last_error_type = type(e).__name__
-                status.consecutive_failures += 1
-                if status.failed_since is None:
-                    status.failed_since = time.time()
-                if self._notify_cb:
-                    try:
-                        self._notify_cb(name, str(e))
-                    except Exception:  # noqa: BLE001
-                        log.exception("failure notification callback raised")
-        finally:
-            with self._lock:
-                self._status[name].running = False
-            self._save_status()
+            self._status[name].running = False
+        self._save_status()
 
     # -- persistence -----------------------------------------------------
 
