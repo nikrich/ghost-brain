@@ -55,9 +55,25 @@ export function useCaptures(opts?: { limit?: number; source?: string }) {
   const query = params.toString();
   return useQuery({
     queryKey: ['captures', opts ?? {}],
-    queryFn: () => get<CapturesPage>(`/v1/captures${query ? '?' + query : ''}`),
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    // Signal piping is the load-bearing piece for filter switching:
+    // when the user clicks a different chip, React Query aborts the
+    // in-flight request for the previous source. Without this, a
+    // refetched-in-background "all captures" response could land after
+    // a brand-new "calendar" response and overwrite the visible list
+    // with mixed data.
+    queryFn: ({ signal }) =>
+      get<CapturesPage>(
+        `/v1/captures${query ? '?' + query : ''}`,
+        { signal },
+      ),
+    // staleTime: 0 so chip clicks always trigger a fresh fetch (otherwise
+    // the same-filter cache served back instantly and the next refetch
+    // could overwrite again).
+    staleTime: 0,
+    // Drop the 30s refetch — it competes with the user's active filtering
+    // and creates the "first click works, then gets confused" symptom.
+    // The connectors tile and sidebar badge each remount on screen
+    // visits, which is the natural refresh trigger.
   });
 }
 
