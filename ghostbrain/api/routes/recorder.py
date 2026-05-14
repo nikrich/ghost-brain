@@ -10,6 +10,7 @@ from ghostbrain.api.repo.recorder import (
     status,
     stop,
 )
+from ghostbrain.recorder.audio_capture import AudioRoutingError
 
 router = APIRouter(prefix="/v1/recorder", tags=["recorder"])
 
@@ -25,6 +26,13 @@ def post_start(payload: StartRequest) -> dict:
         return start(title=payload.title, context=payload.context)
     except RecorderBusy as e:
         raise HTTPException(status_code=409, detail=str(e))
+    except AudioRoutingError as e:
+        # 412 Precondition Failed — request is well-formed, but the
+        # system isn't ready (audio output isn't routed to BlackHole).
+        # Distinct from 500 so the renderer can show a fixable hint
+        # ("switch macOS output to Ghost Brain") instead of a generic
+        # error toast.
+        raise HTTPException(status_code=412, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
 

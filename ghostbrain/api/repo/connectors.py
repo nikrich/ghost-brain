@@ -75,6 +75,13 @@ _INBOX_DIR: dict[str, str] = {
     "claude_code": "claude-code",
 }
 
+# Connector id → per-context subdirectory name under 20-contexts/<ctx>/.
+# Most connector ids match the directory verbatim; claude_code captures
+# land under `claude/` (chosen for readability over the underscore form).
+_CONTEXT_DIR: dict[str, str] = {
+    "claude_code": "claude",
+}
+
 
 def _list_connector_ids() -> list[str]:
     """Connector IDs we ship, minus any hidden infrastructure-only ones.
@@ -99,6 +106,45 @@ def _has_inbox_captures(connector_id: str) -> bool:
     if not inbox.exists():
         return False
     return any(inbox.glob("*.md"))
+
+
+def _count_indexed(connector_id: str) -> int:
+    """Count .md files this connector has produced across the vault.
+
+    Looks in two places:
+      ``00-inbox/raw/<inbox-dir>/`` — captures awaiting routing
+      ``20-contexts/*/<connector-dir>/**`` — already-routed captures
+
+    Most connectors use ``connector_id`` as both directory names; the
+    `_INBOX_DIR` map handles the few that differ (``claude_code`` is
+    written as ``claude-code/`` by the worker).
+
+    The connectors detail panel shows this as "indexed items" — without
+    it the panel reads 0 even when the vault has dozens of captures, so
+    users assume a connector is broken when it's actually fine.
+    """
+    from ghostbrain.paths import vault_path
+
+    root = vault_path()
+    inbox_dir = _INBOX_DIR.get(connector_id, connector_id)
+    ctx_subdir = _CONTEXT_DIR.get(connector_id, connector_id)
+
+    n = 0
+    inbox = root / "00-inbox" / "raw" / inbox_dir
+    if inbox.exists():
+        n += sum(1 for _ in inbox.glob("*.md"))
+
+    contexts = root / "20-contexts"
+    if contexts.exists():
+        # 20-contexts/<ctx>/<ctx_subdir>/**/*.md — rglob so nested
+        # subdirectories (github/prs, calendar/transcripts) are counted.
+        for ctx_dir in contexts.iterdir():
+            if not ctx_dir.is_dir():
+                continue
+            conn_dir = ctx_dir / ctx_subdir
+            if conn_dir.exists():
+                n += sum(1 for _ in conn_dir.rglob("*.md"))
+    return n
 
 
 def _read_last_run(connector_id: str) -> str | None:
@@ -132,7 +178,7 @@ def _connector_record(connector_id: str) -> dict:
         "id": connector_id,
         "displayName": display["displayName"],
         "state": run_state,
-        "count": 0,  # not exposed by .last_run; Phase 2 enriches
+        "count": _count_indexed(connector_id),
         "lastSyncAt": last_run,
         "account": None,
         "throughput": None,

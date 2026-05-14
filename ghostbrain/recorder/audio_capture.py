@@ -6,6 +6,7 @@ mixes them, writes 16-kHz mono WAV that whisper.cpp likes.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -17,6 +18,31 @@ from dataclasses import dataclass
 from pathlib import Path
 
 log = logging.getLogger("ghostbrain.recorder.audio_capture")
+
+
+class AudioRoutingError(RuntimeError):
+    """Raised when the system output isn't routed through BlackHole, so
+    recording would silently capture only the microphone (or nothing).
+
+    Keeping this separate from RuntimeError lets the caller surface a
+    specific, actionable message to the user instead of a generic
+    "recording failed" toast.
+    """
+
+
+# Names of devices we trust to relay system audio into BlackHole. Direct
+# BlackHole, the bootstrap-created "Ghost Brain" multi-output, and the
+# generic macOS aggregate-device labels all qualify. The user can extend
+# this via GHOSTBRAIN_ALLOWED_AUDIO_OUTPUTS (comma-separated) when they
+# have a custom multi-output name.
+_BUILTIN_ALLOWED_OUTPUT_PATTERNS: tuple[str, ...] = (
+    "blackhole",
+    "ghost brain",
+    "ghostbrain",
+    "multi-output",
+    "multi output",
+    "aggregate",
+)
 
 
 @dataclass
@@ -83,9 +109,89 @@ def find_indexes() -> tuple[int, int]:
     return blackhole_idx, mic_idx
 
 
+def current_default_output_device() -> str | None:
+    """Return the macOS default audio output device name, or None on failure.
+
+    Reads system_profiler's audio data — slower than a raw CoreAudio API
+    call but doesn't require pyobjc. Failure is silent: callers treat a
+    None result as "couldn't verify" and the routing assert is
+    permissive in that case (better to record than block on a probe
+    failure).
+    """
+    binary = shutil.which("system_profiler")
+    if binary is None:
+        return None
+    try:
+        result = subprocess.run(
+            [binary, "SPAudioDataType", "-json"],
+            capture_output=True, text=True, timeout=10,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        payload = json.loads(result.stdout or "")
+    except json.JSONDecodeError:
+        return None
+    for outer in payload.get("SPAudioDataType") or []:
+        for dev in outer.get("_items") or []:
+            flag = dev.get("coreaudio_default_audio_output_device")
+            if flag in ("spaudio_yes", True, "yes"):
+                name = dev.get("_name")
+                return str(name) if name else None
+    return None
+
+
+def output_likely_reaches_blackhole(device_name: str | None) -> bool:
+    """Heuristic: does this output device pipe audio into BlackHole?
+
+    True for direct BlackHole, the canonical "Ghost Brain" multi-output,
+    and any user-extended names listed in GHOSTBRAIN_ALLOWED_AUDIO_OUTPUTS.
+    system_profiler doesn't expose aggregate-device subdevice lists in
+    JSON, so we can't programmatically prove BlackHole is wired in; this
+    is a name-based shortlist plus an env-var escape hatch.
+    """
+    if not device_name:
+        # Couldn't probe — fall open. Better a silent recording than a
+        # blocked one when the probe machinery itself is broken.
+        return True
+    needle = device_name.strip().lower()
+    if any(p in needle for p in _BUILTIN_ALLOWED_OUTPUT_PATTERNS):
+        return True
+    extra = os.environ.get("GHOSTBRAIN_ALLOWED_AUDIO_OUTPUTS", "")
+    for entry in extra.split(","):
+        entry = entry.strip().lower()
+        if entry and entry in needle:
+            return True
+    return False
+
+
+def assert_output_routes_to_blackhole() -> None:
+    """Raise AudioRoutingError if macOS default output won't reach BlackHole.
+
+    Called at the top of start_capture so a misconfigured output never
+    silently produces a 72-minute file of [BLANK_AUDIO]. The message
+    embeds the actual current device name and the exact one-line fix.
+    """
+    name = current_default_output_device()
+    if output_likely_reaches_blackhole(name):
+        return
+    raise AudioRoutingError(
+        f"macOS audio output is '{name or 'unknown'}', which does not "
+        f"route system audio through BlackHole. Recording would only "
+        f"capture the microphone. "
+        f"Fix: open the Sound menubar item and switch the Output to "
+        f"'Ghost Brain' (or another multi-output device that includes "
+        f"BlackHole 2ch). To allow a custom output name, set "
+        f"GHOSTBRAIN_ALLOWED_AUDIO_OUTPUTS='<name>' in the environment."
+    )
+
+
 def start_capture(wav_path: Path, *, log_path: Path | None = None) -> CaptureHandle:
     """Start ffmpeg, return its PID + the wav path. Caller must persist
     the PID to outlive process restarts (state file)."""
+    assert_output_routes_to_blackhole()
     binary = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
     blackhole_idx, mic_idx = find_indexes()
     wav_path.parent.mkdir(parents=True, exist_ok=True)

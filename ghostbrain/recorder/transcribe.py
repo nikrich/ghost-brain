@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -13,6 +14,25 @@ log = logging.getLogger("ghostbrain.recorder.transcribe")
 DEFAULT_MODEL_DIR = Path.home() / "ghostbrain" / "recorder" / "models"
 DEFAULT_MODEL = "ggml-medium.en.bin"
 DEFAULT_TIMEOUT_S = 30 * 60  # 30 min for a long meeting; whisper is fast on Apple Silicon
+
+# whisper.cpp emits these tokens whenever a segment has no detectable speech.
+# Useful as an internal signal (low-energy audio) but visually destructive in
+# the final transcript — a meeting recorded with the wrong audio output
+# becomes 100+ lines of "[BLANK_AUDIO]" with no content. We strip them and
+# collapse repeated noise markers; if the WHOLE transcript was noise the
+# caller sees an empty file and can warn rather than save a junk note.
+_NOISE_TOKEN_RE = re.compile(
+    r"^\s*\[\s*(?:"
+    r"BLANK_AUDIO|"
+    r"SILENCE|silence|"
+    r"MUSIC|music|"
+    r"NOISE|noise|"
+    r"INAUDIBLE|inaudible|"
+    r"PAUSE|pause|"
+    r"_BEG_|_END_"
+    r")\s*\]\s*$",
+    re.IGNORECASE,
+)
 
 
 class TranscribeError(RuntimeError):
@@ -69,7 +89,45 @@ def transcribe(
     txt_path = output_base.with_suffix(".txt")
     if not txt_path.exists():
         raise TranscribeError(f"whisper-cli ran but no .txt at {txt_path}")
+    _scrub_noise_tokens(txt_path)
     return txt_path
+
+
+def _scrub_noise_tokens(txt_path: Path) -> None:
+    """Rewrite the transcript with whisper's silence-marker lines removed.
+
+    Whisper emits one timestamped line per segment. When a segment has no
+    speech the line is "[BLANK_AUDIO]" (or "[SILENCE]" etc.). Surfacing
+    those to the user is purely noise — they don't carry any information
+    the user can act on, and they hide the real content when speech IS
+    sparse. We rewrite in place so every downstream consumer sees the
+    clean version.
+
+    Empty lines after scrubbing are also dropped — an all-noise recording
+    becomes an empty file, which lets the daemon decide to emit an
+    "audio captured but no speech detected" warning instead of saving a
+    note that's 100% silence markers.
+    """
+    try:
+        raw = txt_path.read_text(encoding="utf-8")
+    except OSError:
+        return  # leave file untouched on read error
+    kept: list[str] = []
+    dropped = 0
+    for line in raw.splitlines():
+        if _NOISE_TOKEN_RE.match(line):
+            dropped += 1
+            continue
+        if not line.strip():
+            continue
+        kept.append(line)
+    if dropped:
+        log.info(
+            "scrubbed %d noise marker(s) from %s (%d real line(s) kept)",
+            dropped, txt_path.name, len(kept),
+        )
+    # Preserve trailing newline for tools that expect it.
+    txt_path.write_text("\n".join(kept) + ("\n" if kept else ""), encoding="utf-8")
 
 
 def _resolve_model(model_path: Path | None) -> Path:
